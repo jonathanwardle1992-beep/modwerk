@@ -3,7 +3,7 @@
   "id": "play-start",
   "key": "PLAY START",
   "name": "Play Start",
-  "version": "0.1.0-experimental",
+  "version": "0.1.9-experimental",
   "category": "system",
   "author": {
     "github": "jonathanwardle1992-beep",
@@ -15,16 +15,16 @@
   "presentation": {
     "label": "PLAY starts from the beginning",
     "family": "Transport",
-    "summary": "PERSONALIZE setting: when ON, [PLAY] always starts the sequencer from the beginning and never pauses.",
-    "overview": "A global sequencer setting: [PLAY] always starts from the beginning and never pauses. Turn it on or off in PERSONALIZE. Default OFF is stock play/pause, so installing the module changes nothing until you enable it.",
+    "summary": "PERSONALIZE checkbox: when ticked, [PLAY] always starts the sequencer from the beginning and never pauses.",
+    "overview": "A global sequencer setting: [PLAY] always starts from the beginning and never pauses. Tick it in PERSONALIZE. Default empty is stock play/pause, so installing the module changes nothing until you enable it.",
     "highlights": [
-      "Default OFF: stock [PLAY] pause and continue.",
-      "ON: [PLAY] starts from the beginning even if the sequencer is already running or paused. [STOP] still stops.",
+      "Default empty box: stock [PLAY] pause and continue.",
+      "Ticked: [PLAY] starts from the beginning even if the sequencer is already running or paused. [STOP] still stops.",
       "PERSONALIZE only: not a Part or project field. Mute Modes cannot be chosen with it until PERSONALIZE is a shared base table."
     ],
     "usage": [
       "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to PLAY START.",
-      "Turn LEVEL (or YES) to ON. Close the menu.",
+      "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
       "Press [STOP], then [PLAY]: the sequencer starts. Press [PLAY] again while it runs: it starts from the beginning instead of pausing. [STOP] still stops."
     ]
   },
@@ -32,7 +32,7 @@
     "location": "PROJECT > SYSTEM > PERSONALIZE > PLAY START",
     "steps": [
       "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to PLAY START.",
-      "Turn LEVEL (or YES) to ON. Close the menu.",
+      "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
       "Press [STOP], then [PLAY]: the sequencer starts. Press [PLAY] again while it runs: it starts from the beginning instead of pausing. [STOP] still stops."
     ],
     "screenshots": []
@@ -43,10 +43,10 @@
       "default": 0,
       "count": 2,
       "labels": [
-        "OFF",
-        "ON"
+        "empty",
+        "X"
       ],
-      "doc": "OFF is stock play/pause. ON makes panel [PLAY] always start from the beginning. LEFT/RIGHT clamp; YES wraps. Stored in PERSONALIZE, not in the project."
+      "doc": "Empty box is stock play/pause. Ticked (X) makes panel [PLAY] always start from the beginning. Stock checkbox: YES ticks or clears; cursor motion must not change it. Stored in PERSONALIZE, not in the project."
     }
   ],
   "compatibility": {
@@ -60,7 +60,7 @@
       "key:PLAY"
     ],
     "limitations": [
-      "OS 1.40C. Hardware and emulator transport checks have not been run.",
+      "OS 1.40C. 0.1.9 card (ELEK PS 0.1.9, SHA-256 6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316): with X, every [PLAY] starts from step 1. 0.1.0–0.1.8 failed as in TESTING.md. USB Keep/Undo and ot_emu untested.",
       "Conflicts with Mute Modes: both relocate the PERSONALIZE tables and poke the ANDY restore length.",
       "MIDI START / CONTINUE / STOP do not follow this setting.",
       "An OS upgrade resets PERSONALIZE."
@@ -110,8 +110,8 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "No emulator or hardware transport results yet. Stock guards for the [PLAY] state load, PERSONALIZE count and ANDY restore sites match original OS 1.40C hashes recorded in TESTING.md. Publication checks cannot pass until captures, performance and a unit report exist.",
-    "hardwareStatus": "untested",
+    "summary": "0.1.9-experimental same-unit card (ELEK PS 0.1.9): with X, every [PLAY] starts from step 1. 0.1.0–0.1.8 failed as in TESTING.md.",
+    "hardwareStatus": "reported",
     "evidenceRevision": "b8deefc88b2c3e5f3c6158e364eb741df1924e1d",
     "gates": [
       "modules/play-start/verify.py"

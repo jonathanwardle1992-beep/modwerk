@@ -1,24 +1,30 @@
 | SPDX-License-Identifier: MIT
 | SPDX-FileCopyrightText: 2026 jonathanwardle1992-beep
-| playstart -- PERSONALIZE PLAY START, and the [PLAY] transport gate.
+| playstart -- PERSONALIZE PLAY START checkbox, and the [PLAY] transport gate.
 |
-| SETTING 0x800000e0  0 = OFF = stock play/pause (default)
-|                     1 = ON  = [PLAY] always starts from the beginning
-| SHADOW  0x100fff70  ANDY copy (0x100fff00 + 0x800000e0 - 0x80000070)
+| SETTING 0x800000dc  0 = empty = stock pause (default); 1 = X = from step 1
+| LIVE / SHADOW     copies so YES and PLAY agree.
 |
-| TRANSPORT 0x800066a0  stock: 0 stopped, 1 playing, 2 paused (from the
-| pause stub at 0x4009f784, which sets 2 after jsr 0x4009f5bc).
+| Stock PLAY at 0x4006181a tests 0x460d1aec. If that word is 0 (this unit:
+| 0.1.5-0.1.8), it never reaches 0x40061822 / 0x40061848 / 0x40061856
+| (TRANSPORT load, jsr pause 0x4009f784, start 0x400a030c). It polls SEQ
+| via pea -1 / jsr 0x4009b290, pauses with jsr 0x4009f5bc at 0x4006188a,
+| and starts with pea 0 / jsr 0x4009b964 at 0x40061892. 0.1.8 still paused
+| because it hooked the other branch. 0.1.5-0.1.6 jumped to 0x40061856 and
+| PLAY went dead (wrong start).
 |
-| Detour 0x40061822: the first instruction of the no-[REC] [PLAY] path that
-| loads TRANSPORT. Quant Live Rec detours 0x40061778, six bytes earlier, and
-| resumes at 0x4006177e, so both can be installed. Mute Modes cannot share
-| this module: it relocates the same PERSONALIZE tables.
+| 0.1.9: SEQ==playing/paused and the box is X -> SEQSTOP, clr TRANSPORT,
+| jmp 0x40061892. Empty box keeps seqpause. 1aec!=0 branch still converted
+| the same way.
 
-    .equ SETTING,      0x800000e0
-    .equ SH_SETTING,   0x100fff70
+    .equ SETTING,      0x800000dc
+    .equ SH_SETTING,   0x100fff6c
     .equ TRANSPORT,    0x800066a0
-    .equ LEAVE_PLAY,   0x4009f5bc
     .equ PLAY_RESUME,  0x40061828
+    .equ PLAY_ALT_REC, 0x40061882
+    .equ PLAY_ALT_START, 0x40061892
+    .equ PLAY_AFTER_PAUSE, 0x4006184e
+    .equ PLAY_EPI,     0x4006189c
 
     .text
 
@@ -27,73 +33,102 @@ lbl_playstart:
     .asciz "PLAY START"
     .align 2
 
-ps_off:
-    .asciz "OFF"
+ps_empty:
+    .byte  0x15, 0
     .align 2
-ps_on:
-    .asciz "ON"
+ps_ticked:
+    .byte  0x16, 0
     .align 2
-val_tbl:
-    .long ps_off
-    .long ps_on
 
     .global get_playstart
 get_playstart:
-    move.l  SETTING,%d0
-    cmpi.l  #1,%d0
-    beq.b   gp_ok
-    moveq   #0,%d0
-gp_ok:
-    lsl.l   #2,%d0
-    lea     val_tbl,%a0
-    move.l  (%a0,%d0.l),%d0
+    lea     ps_empty,%a0
+    move.l  %a0,%d0
+    tst.l   SETTING
+    beq.b   gp_done
+    lea     ps_ticked,%a0
+    move.l  %a0,%d0
+gp_done:
     rts
 
     .global set_playstart
 set_playstart:
-    move.l  SETTING,%d0
-    cmpi.l  #1,%d0
-    beq.b   sp_cur
-    moveq   #0,%d0
-sp_cur:
-    add.l   4(%sp),%d0
     tst.l   8(%sp)
-    bne.b   sp_wrap
-    tst.l   %d0
-    bpl.b   sp_clhi
-    moveq   #0,%d0
-    bra.b   sp_store
-sp_clhi:
-    cmpi.l  #1,%d0
-    ble.b   sp_store
-    moveq   #1,%d0
-    bra.b   sp_store
-sp_wrap:
-    cmpi.l  #1,%d0
-    ble.b   sp_wlo
-    moveq   #0,%d0
-    bra.b   sp_store
-sp_wlo:
-    tst.l   %d0
-    bpl.b   sp_store
-    moveq   #1,%d0
-sp_store:
+    beq.b   sp_rts
+    move.l  LIVE,%d0
+    eori.l  #1,%d0
+    andi.l  #1,%d0
+    move.l  %d0,LIVE
     move.l  %d0,SETTING
     move.l  %d0,SH_SETTING
+sp_rts:
     rts
 
+| d0 = enable?  (LIVE | SETTING).  Z set if both 0.
+ps_enabled:
+    tst.l   LIVE
+    bne.b   pe_yes
+    tst.l   SETTING
+pe_yes:
+    rts
+
+| 0x40061822
     .global ps_gate
 ps_gate:
     move.l  TRANSPORT,%d0
-    tst.l   SETTING
-    beq.b   ps_stock
+    bsr.w   ps_enabled
+    beq.b   pg_stock
     tst.l   %d0
-    beq.b   ps_stock
-    jsr     LEAVE_PLAY
-    clr.l   TRANSPORT
-    moveq   #0,%d0
-ps_stock:
+    beq.b   pg_stock
+    jmp     ps_restart
+pg_stock:
     jmp     PLAY_RESUME
+
+| 0x40061848
+    .global ps_pause
+ps_pause:
+    bsr.w   ps_enabled
+    beq.b   pp_stock
+    jmp     ps_restart
+pp_stock:
+    jsr     0x4009f784
+    jmp     PLAY_AFTER_PAUSE
+
+| 0x4006187c  (d0 = SEQ from 0x4009b290)
+    .global ps_alt
+ps_alt:
+    bsr.w   ps_enabled
+    beq.b   pa_stock
+    tst.l   %d0
+    beq.b   pa_start
+    jmp     ps_restart
+pa_stock:
+    moveq   #1,%d1
+    cmp.l   %d0,%d1
+    bne.b   pa_start
+    jmp     PLAY_ALT_REC
+pa_start:
+    jmp     PLAY_ALT_START
+
+| 0x4006188a
+    .global ps_seqpause
+ps_seqpause:
+    bsr.w   ps_enabled
+    beq.b   pq_stock
+    jmp     ps_restart
+pq_stock:
+    jsr     0x4009f5bc
+    jmp     PLAY_EPI
+
+    .global ps_restart
+ps_restart:
+    jsr     0x400a10c8
+    clr.l   TRANSPORT
+    jmp     PLAY_ALT_START
+
+    .align 2
+LIVE:
+    .long   0
 
     .ifdef MODWERK_EVENTS
     .global ps_restore
@@ -101,7 +136,9 @@ ps_restore:
     tst.b   ps_restored
     bne.b   pr_done
     move.l  SH_SETTING,%d0
+    andi.l  #1,%d0
     move.l  %d0,SETTING
+    move.l  %d0,LIVE
     moveq   #1,%d0
     move.b  %d0,ps_restored
 pr_done:
