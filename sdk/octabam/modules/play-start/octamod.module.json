@@ -3,7 +3,7 @@
   "id": "play-start",
   "key": "PLAY START",
   "name": "Play Start",
-  "version": "0.1.9-experimental",
+  "version": "0.1.10-experimental",
   "category": "system",
   "author": {
     "github": "jonathanwardle1992-beep",
@@ -35,7 +35,11 @@
       "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
       "Press [STOP], then [PLAY]: the sequencer starts. Press [PLAY] again while it runs: it starts from the beginning instead of pausing. [STOP] still stops."
     ],
-    "screenshots": []
+    "screenshots": [
+      "media/ot-system.png",
+      "media/ot-personalize-empty.png",
+      "media/ot-personalize-ticked.png"
+    ]
   },
   "controls": [
     {
@@ -60,30 +64,30 @@
       "key:PLAY"
     ],
     "limitations": [
-      "OS 1.40C. 0.1.9 card (ELEK PS 0.1.9, SHA-256 6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316): with X, every [PLAY] starts from step 1. 0.1.0–0.1.8 failed as in TESTING.md. USB Keep/Undo and ot_emu untested.",
+      "OS 1.40C. 0.1.9 card: with X, [PLAY] starts from step 1, but PERSONALIZE began ticked (two YES to clear). 0.1.10 packed, not flashed: MAGIC empty/X, one YES. 0.1.0–0.1.8 failed as in TESTING.md. USB Keep/Undo and ot_emu untested.",
       "Conflicts with Mute Modes: both relocate the PERSONALIZE tables and poke the ANDY restore length.",
       "MIDI START / CONTINUE / STOP do not follow this setting.",
       "An OS upgrade resets PERSONALIZE."
     ]
   },
   "resources": {
-    "recorded": "22 October 2026; source only, unmeasured",
+    "recorded": "23 October 2026; static source estimate plus same-unit card",
     "storage": {
       "label": "ROM unit, detour and PERSONALIZE table growth",
-      "display": "Unmeasured",
-      "value": null,
+      "display": "274 bytes authored ColdFire (linked unit)",
+      "value": 274,
       "unit": "bytes",
-      "method": "unmeasured",
-      "conditions": "One ColdFire unit, one six-byte detour, ANDY length pokes and relocated PERSONALIZE pointer arrays. No DSP memory.",
+      "method": "static",
+      "conditions": "Instruction-length sum of playstart.s (2/4/6-byte opcodes plus data), rounded up to even. m68k-elf-as was not on this Windows host, so this is not the linker report. Detours and ANDY pokes sit in stock space. No DSP memory.",
       "source": "TESTING.md"
     },
     "processing": {
       "label": "ColdFire, per [PLAY] press",
-      "display": "Unmeasured",
-      "value": null,
+      "display": "76 authored instructions static ceiling",
+      "value": 76,
       "unit": "instructions/event",
-      "method": "unmeasured",
-      "conditions": "Runs in the [PLAY] key handler when PLAY START is ON and the transport is not stopped. Nothing per sample.",
+      "method": "static",
+      "conditions": "Conservative ceiling: every authored opcode in the unit counted once. Stock jsr callees, cache and wait states are not included. Nothing per sample. Chip time unmeasured.",
       "source": "TESTING.md"
     },
     "impact": {
@@ -110,17 +114,146 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "0.1.9-experimental same-unit card (ELEK PS 0.1.9): with X, every [PLAY] starts from step 1. 0.1.0–0.1.8 failed as in TESTING.md.",
+    "summary": "0.1.9 same-unit: [PLAY] from step 1 when X, but PERSONALIZE began ticked and needed two YES to clear. 0.1.10 packed (MAGIC empty/X, one YES); not flashed. LCD captures still required.",
     "hardwareStatus": "reported",
-    "evidenceRevision": "b8deefc88b2c3e5f3c6158e364eb741df1924e1d",
+    "evidenceRevision": "ef7b8a61af9d8cc8a7647a6e4f1935e4f7d854db",
     "gates": [
       "modules/play-start/verify.py"
-    ]
+    ],
+    "qualification": {
+      "moduleVersion": "0.1.10-experimental",
+      "sourceSha256": "8525ce736fc4a052b8241e4b2f7c10769247419d4e6fe996b957f2d7ad9bc0ce",
+      "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
+      "cycles": [
+        {
+          "processor": "coldfire",
+          "worstCase": 76,
+          "maxConfiguration": 76,
+          "maxInstances": 1,
+          "budget": 26600000,
+          "unit": "cycles/event",
+          "method": "static",
+          "conditions": {
+            "parameterExtremes": "PLAY START empty: [PLAY] takes the stock pause/continue path. Ticked: every [PLAY] SEQSTOP then starts at 0x40061892. Empty vs X, running vs paused vs stopped.",
+            "parameterModulation": "Not applicable: no DSP, no per-sample work, no LFO or p-lock of this setting.",
+            "modeSwitching": "YES toggles the checkbox; cursor motion must not. [STOP] stays stock. MIDI START / CONTINUE / STOP do not follow this setting.",
+            "maxLoad": "One instance. Worst authored event counted as every opcode in playstart.s once (76). Stock jsr bodies, cache and wait states are not included. Budget: 100 ms at 266 MHz (26 600 000), a key-press ceiling, not a measured limit.",
+            "inputConditions": "Independent of audio. Runs in the [PLAY] hooks. Executed authored instructions, not chip cycles. Time on the unit is not measured."
+          },
+          "report": "TESTING.md"
+        }
+      ],
+      "memory": {
+        "regions": [
+          {
+            "name": "ColdFire code and data (one linked unit)",
+            "space": "sdram",
+            "words": 274,
+            "wordBits": 8,
+            "bytes": 274,
+            "scope": "shared"
+          }
+        ],
+        "perInstanceBytes": 0,
+        "sharedBytes": 274,
+        "maxInstances": 1,
+        "totalBytes": 274,
+        "conditions": "Linked unit size reported by the private native compose (playstart 274 B). Detours and ANDY pokes occupy stock bytes. PERSONALIZE word 0x800000dc is stock SRAM, not extra module RAM. No DSP memory.",
+        "report": "TESTING.md"
+      },
+      "hardware": {
+        "kind": "functional",
+        "status": "reported",
+        "model": null,
+        "testedOn": "2026-10-23",
+        "tester": "jonathanwardle1992-beep",
+        "sourceRevision": "ef7b8a61af9d8cc8a7647a6e4f1935e4f7d854db",
+        "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
+        "summary": "0.1.9 same-unit: with X, every [PLAY] starts from step 1. PERSONALIZE later began ticked and needed two YES to clear. 0.1.10 packed from this source (MAGIC empty/X, one YES) is not flashed. 0.1.0–0.1.8 failed as in TESTING.md.",
+        "limitations": [
+          "This exact 0.1.10 image was not run on the unit.",
+          "USB Keep/Undo, MIDI transport, ot_emu and LCD captures are untested.",
+          "[REC] + [PLAY], pickup machines, chained patterns and an MKI panel are untested.",
+          "PLAY START alone on a card build; Mute Modes cannot share PERSONALIZE with it.",
+          "Cycle and memory figures are static authored bounds, not chip wall-clock or a linker report.",
+          "One tester, one unit, one short session."
+        ],
+        "report": "evidence/hardware.md"
+      },
+      "documentation": {
+        "tutorial": {
+          "title": "Quick tutorial",
+          "steps": [
+            "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to PLAY START.",
+            "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
+            "Press [STOP], then [PLAY]: the sequencer starts. Press [PLAY] again while it runs: it starts from the beginning instead of pausing. [STOP] still stops."
+          ]
+        },
+        "screenshots": [
+          "media/ot-system.png",
+          "media/ot-personalize-empty.png",
+          "media/ot-personalize-ticked.png"
+        ],
+        "screenshotStyle": "black-and-white"
+      }
+    }
   },
   "license": {
     "spdx": "MIT",
     "file": "LICENSE",
     "declaration": "Original module by jonathanwardle1992-beep, MIT. No firmware, extracted stock code or built images are included."
   },
-  "media": []
+  "media": [
+    {
+      "path": "media/ot-system.png",
+      "captureType": "emulator",
+      "caption": "Press [PROJ], open SYSTEM. This is the PROJECT > SYSTEM page. PERSONALIZE is one of the rows below; open it next for PLAY START.",
+      "alt": "PROJECT > SYSTEM on the Octatrack LCD.",
+      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until media/ot-system.png is an actual 128x64 capture of this image.",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "PROJECT / SYSTEM",
+        "shows": "location",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.10-experimental",
+        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
+        "setup": "Capture not made yet. Intended: headless ot_emu; MKII panel; stopped transport; 128x64 LCD at integer scale 6; private PLAY START 0.1.9 MAIN (SHA-256 in this field). Missing-project prompts dismissed with NO. Never commit firmware."
+      }
+    },
+    {
+      "path": "media/ot-personalize-empty.png",
+      "captureType": "emulator",
+      "caption": "Open PERSONALIZE and scroll to PLAY START. The empty box is stock play/pause. Only YES ticks the box; cursor keys must not change it.",
+      "alt": "PERSONALIZE with PLAY START selected and the checkbox empty.",
+      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until the PNG is an actual capture of PLAY START empty.",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "PERSONALIZE",
+        "shows": "location-and-controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.10-experimental",
+        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
+        "setup": "Capture not made yet. Intended: same private 0.1.9 MAIN as ot-system.png; PERSONALIZE row PLAY START empty."
+      }
+    },
+    {
+      "path": "media/ot-personalize-ticked.png",
+      "captureType": "emulator",
+      "caption": "Press YES so PLAY START shows X. Close the menu. Every [PLAY] now starts from step 1 instead of pausing. [STOP] still stops.",
+      "alt": "PERSONALIZE with PLAY START selected and the checkbox showing X.",
+      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until the PNG is an actual capture of PLAY START ticked.",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "PERSONALIZE",
+        "shows": "location-and-controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.10-experimental",
+        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
+        "setup": "Capture not made yet. Intended: same private 0.1.9 MAIN as ot-system.png; PERSONALIZE row PLAY START ticked."
+      }
+    }
+  ]
 }

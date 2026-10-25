@@ -2,8 +2,12 @@
 | SPDX-FileCopyrightText: 2026 jonathanwardle1992-beep
 | playstart -- PERSONALIZE PLAY START checkbox, and the [PLAY] transport gate.
 |
-| SETTING 0x800000dc  0 = empty = stock pause (default); 1 = X = from step 1
-| LIVE / SHADOW     copies so YES and PLAY agree.
+| SETTING 0x800000dc  MAGIC_OFF = empty = stock pause (default);
+|                     MAGIC_ON  = X = from step 1.
+| LIVE is 0/1 so YES and PLAY agree. 0.1.9 stored 0/1 and treated any
+| nonzero word as ticked, so leftover SRAM (or TRACK MUTES magic) showed
+| X and the first YES only filled LIVE. Same as TRACK MUTES: only
+| MAGIC_ON is on; YES xors that 0/1.
 |
 | Stock PLAY at 0x4006181a tests 0x460d1aec. If that word is 0 (this unit:
 | 0.1.5-0.1.8), it never reaches 0x40061822 / 0x40061848 / 0x40061856
@@ -19,6 +23,8 @@
 
     .equ SETTING,      0x800000dc
     .equ SH_SETTING,   0x100fff6c
+    .equ MAGIC_OFF,    0x50530000
+    .equ MAGIC_ON,     0x50530001
     .equ TRANSPORT,    0x800066a0
     .equ PLAY_RESUME,  0x40061828
     .equ PLAY_ALT_REC, 0x40061882
@@ -40,36 +46,53 @@ ps_ticked:
     .byte  0x16, 0
     .align 2
 
+ps_load:
+    move.l  SETTING,%d0
+    cmpi.l  #MAGIC_ON,%d0
+    beq.b   pl_on
+    clr.l   LIVE
+    moveq   #0,%d0
+    rts
+pl_on:
+    moveq   #1,%d0
+    move.l  %d0,LIVE
+    rts
+
     .global get_playstart
 get_playstart:
+    bsr.w   ps_load
     lea     ps_empty,%a0
-    move.l  %a0,%d0
-    tst.l   SETTING
+    tst.l   %d0
     beq.b   gp_done
     lea     ps_ticked,%a0
-    move.l  %a0,%d0
 gp_done:
+    move.l  %a0,%d0
     rts
 
     .global set_playstart
 set_playstart:
     tst.l   8(%sp)
     beq.b   sp_rts
-    move.l  LIVE,%d0
+    bsr.w   ps_load
     eori.l  #1,%d0
     andi.l  #1,%d0
     move.l  %d0,LIVE
+    addi.l  #MAGIC_OFF,%d0
     move.l  %d0,SETTING
     move.l  %d0,SH_SETTING
 sp_rts:
     rts
 
-| d0 = enable?  (LIVE | SETTING).  Z set if both 0.
+| Z set if empty. Preserves d0 (TRANSPORT / SEQ).
 ps_enabled:
-    tst.l   LIVE
-    bne.b   pe_yes
-    tst.l   SETTING
-pe_yes:
+    move.l  SETTING,%d1
+    cmpi.l  #MAGIC_ON,%d1
+    beq.b   pe_on
+    clr.l   LIVE
+    rts
+pe_on:
+    moveq   #1,%d1
+    move.l  %d1,LIVE
     rts
 
 | 0x40061822
@@ -136,8 +159,12 @@ ps_restore:
     tst.b   ps_restored
     bne.b   pr_done
     move.l  SH_SETTING,%d0
-    andi.l  #1,%d0
+    cmpi.l  #MAGIC_ON,%d0
+    beq.b   pr_on
+    move.l  #MAGIC_OFF,%d0
+pr_on:
     move.l  %d0,SETTING
+    andi.l  #1,%d0
     move.l  %d0,LIVE
     moveq   #1,%d0
     move.b  %d0,ps_restored

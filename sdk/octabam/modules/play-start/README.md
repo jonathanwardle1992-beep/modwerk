@@ -1,10 +1,10 @@
 # Play Start
 
-Version: `0.1.9-experimental` · author: [@jonathanwardle1992-beep](https://github.com/jonathanwardle1992-beep)
+Version: `0.1.10-experimental` · author: [@jonathanwardle1992-beep](https://github.com/jonathanwardle1992-beep)
 
 A global sequencer setting: **[PLAY] always starts from the beginning and never pauses.** Tick it in PERSONALIZE. Default **empty** is stock play/pause, so installing the module changes nothing until you enable it.
 
-**Experimental.** Same-unit card of `0.1.9` (`PS 0.1.9`): with X, every [PLAY] starts from step 1. Empty box is stock pause. USB Keep/Undo and `ot_emu` are untested.
+**Experimental.** `0.1.10` makes PLAY START empty unless the stored word is MAGIC_ON, so leftover SRAM does not show X, and one YES ticks it. `0.1.9` card: with X, every [PLAY] starts from step 1, but PERSONALIZE began ticked. USB Keep/Undo and `ot_emu` are untested.
 
 ## Overview
 
@@ -22,10 +22,10 @@ No knob. In PERSONALIZE this is a stock checkbox: **only [YES] ticks or unticks*
 
 ## Usage
 
-### Quick tutorial: start from the beginning every time
+### Quick tutorial
 
 1. Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to PLAY START.
-2. Press YES so the box shows X. Close the menu.
+2. Press YES so the box shows X. Cursor up/down must not change it. Close the menu.
 3. Press [STOP], then [PLAY]: the sequencer starts. Press [PLAY] again while it runs: it starts from the beginning instead of pausing. [STOP] still stops.
 
 To restore stock play/pause, clear the box, or leave the module out of the build.
@@ -40,7 +40,7 @@ To restore stock play/pause, clear the box, or leave the module out of the build
 
 ## Compatibility and limitations
 
-- OS 1.40C. Hardware: `0.1.9` card (`PS 0.1.9`) on one unit: with X, [PLAY] starts from step 1. Earlier cards failed as in [TESTING.md](TESTING.md).
+- OS 1.40C. Hardware: `0.1.9` card (`PS 0.1.9`) on one unit: with X, [PLAY] starts from step 1, but the PERSONALIZE box began ticked and needed two YES to clear. `0.1.10` is packed, not yet flashed. Earlier cards failed as in [TESTING.md](TESTING.md).
 - **Conflicts with Mute Modes** (`mute-modes`): both relocate the PERSONALIZE label/getter/setter arrays and poke the ANDY restore length. The configurator will not offer both until a base-owned PERSONALIZE table exists (that would be a separate owner-reviewed change, not this module).
 - Quant Live Rec can sit beside it: that module detours [PLAY] at `0x40061778`; this one detours after the [REC]-held branch (`0x40061822` and the SEQ pause/start at `0x4006187c` / `0x4006188a`).
 - MIDI START does not follow PLAY START. Not tested: pickup machines, chained patterns, live recording while PLAY START is ticked, an MKI panel, USB Keep/Undo.
@@ -48,7 +48,7 @@ To restore stock play/pause, clear the box, or leave the module out of the build
 
 ## Tests and measurements
 
-See [TESTING.md](TESTING.md). `0.1.9` card pass and earlier failures are recorded there.
+See [TESTING.md](TESTING.md) and [evidence/hardware.md](evidence/hardware.md). `0.1.9` same-unit card: with X, every [PLAY] starts from step 1. `0.1.0`–`0.1.8` failed as listed there. Static ColdFire size/cycle bounds are in TESTING; they are not chip wall-clock.
 
 ## Authorship and licences
 
@@ -56,4 +56,10 @@ jonathanwardle1992-beep: behaviour, ColdFire source, PERSONALIZE row and documen
 
 ## Screens and audio
 
-Captures of PROJECT > SYSTEM > PERSONALIZE > PLAY START are not made yet. They must be real black-and-white LCD pixels (emulator framebuffer or hardware). The module makes no sound of its own.
+Publication needs three real black-and-white LCD captures (emulator framebuffer or a hardware photograph of the 128×64 screen, integer scale, no redrawn labels): PROJECT > SYSTEM, PERSONALIZE with PLAY START selected and the box empty, and the same row with X. Drop them at `media/ot-system.png`, `media/ot-personalize-empty.png` and `media/ot-personalize-ticked.png`, then fill `media/capture.json`. The module makes no sound of its own.
+
+![PROJECT > SYSTEM](media/ot-system.png)
+
+![PERSONALIZE, PLAY START empty](media/ot-personalize-empty.png)
+
+![PERSONALIZE, PLAY START ticked](media/ot-personalize-ticked.png)

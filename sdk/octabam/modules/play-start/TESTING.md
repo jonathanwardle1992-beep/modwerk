@@ -41,7 +41,15 @@ A private card image of `0.1.7-experimental` (ELEK `PS 0.1.7`, SHA-256 `c701c6af
 
 A private card image of `0.1.8-experimental` (ELEK `PS 0.1.8`, SHA-256 `4ba100e216192b25206bfeaf5d776171d103c719b0e5a79194f7bc06746ca880`) was retested on the same unit. Reported: still pausing and unpausing. Do not treat `0.1.8-experimental` as a pass. 0.1.8 hooked the 0x460d1aec!=0 pause (0x40061848). This unit's PLAY uses the SEQ pause at 0x4006188a and start at 0x40061892.
 
-A private card image of `0.1.9-experimental` (ELEK `PS 0.1.9`, SHA-256 `6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316`) was retested on the same unit, 23 October 2026. Reported: success — with PLAY START showing X, every [PLAY] starts the sequencer from step 1 instead of pausing. Empty box remains stock play/pause. USB Keep/Undo, MIDI transport, `ot_emu` and LCD captures are untested.
+A private card image of `0.1.9-experimental` (ELEK `PS 0.1.9`, SHA-256 `6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316`) was retested on the same unit, 23 October 2026. Reported: with PLAY START showing X, every [PLAY] starts the sequencer from step 1 instead of pausing. Empty box remains stock play/pause. Later the same PERSONALIZE row was reported as beginning ticked, needing two YES presses to show empty. Do not treat the PERSONALIZE default of `0.1.9` as a pass. USB Keep/Undo, MIDI transport, `ot_emu` and LCD captures are untested.
+
+A private card image of `0.1.10-experimental` is prepared locally (ELEK `PS 0.1.10`, SHA-256 `275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558`). Firmware is not in git. Intended card checks:
+
+1. On boot, PLAY START is empty. One YES ticks it; one YES more clears it. Cursor keys do not change it.
+2. Empty box: [PLAY] still pauses and continues, as on stock. [STOP] always stops.
+3. Ticked box: every [PLAY] starts from step 1, as on `0.1.9`.
+
+Do not treat `0.1.10-experimental` as a pass until those card results exist.
 
 Intended card checks after this image:
 
@@ -58,16 +66,22 @@ Intended card checks after this image:
 
 ## Performance
 
-Not run. `evidence/performance.json` is not filled with measurements. New-module `perf:audit` remains open.
+Static bound only. Authored ColdFire in `playstart.s` is 76 instruction lines. Worst-case event used for qualification is that whole unit if every opcode ran once (76), as a conservative static ceiling, not a measured path. Stock `jsr` callees, cache and wait states are not included. Chip wall-clock and `ot_emu` executed-instruction traces are unmeasured. New-module `perf:audit` remains open.
 
 ## Resources
 
-Unmeasured. Authored ROM is one ColdFire unit (PERSONALIZE checkbox, getter/setter, [PLAY] gates) plus four six-byte detours, three four-byte ANDY pokes, a two-byte row-count poke, and relocated PERSONALIZE pointer arrays. No DSP memory.
+Authored ROM is one ColdFire unit of 274 bytes (native linked `playstart`). Plus four six-byte [PLAY] detours, ANDY length pokes, a row-count poke, and relocated PERSONALIZE pointer arrays in stock space (not counted as extra module RAM). One PERSONALIZE word and its ANDY shadow are stock SRAM. No DSP memory. One instance.
 
 ## Hardware
 
-`0.1.0`–`0.1.8` card flashes, 23 October 2026: failed as listed above. `0.1.9-experimental` same-unit card, 23 October 2026 (ELEK `PS 0.1.9`, SHA-256 `6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316`): with X, every [PLAY] starts from step 1.
+`0.1.0`–`0.1.8` card flashes, 23 October 2026: failed as listed above. `0.1.9-experimental` same-unit card, 23 October 2026 (ELEK `PS 0.1.9`, SHA-256 `6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316`): with X, every [PLAY] starts from step 1; PERSONALIZE later reported as beginning ticked. `0.1.10` not yet flashed. See [evidence/hardware.md](evidence/hardware.md).
 
 ## OT UI capture evidence
 
-Pending: PERSONALIZE with PLAY START selected, empty and ticked. Never commit firmware, dumps or cards.
+Pending. Need real 128×64 LCD pixels (headless `ot_emu` or a hardware photograph), integer scale, two greys, no reconstructed labels:
+
+1. PROJECT > SYSTEM (`media/ot-system.png`)
+2. PERSONALIZE with PLAY START selected, empty box (`media/ot-personalize-empty.png`)
+3. The same row with X (`media/ot-personalize-ticked.png`)
+
+Mute-modes' capture plan (three NO, MENU, LEFT, DOWN, RIGHT, then SYSTEM → PERSONALIZE) is the starting gesture. Never commit firmware, dumps or cards.

@@ -17,6 +17,10 @@ PERSONALIZE: a stock checkbox (glyphs 0x15 empty / 0x16 ticked), stored
 in the free word 0x800000dc and ANDY shadow 0x100fff6c (Mute Modes uses
 the same exclusive slot). 0.1.0-0.1.2 used 0x800000e0, the live
 frame-builder ping, so the box and [PLAY] gate fought a stock bit.
+0.1.9 stored 0/1 and treated any nonzero word as ticked, so leftover
+SRAM showed X and YES had to run twice to clear it. 0.1.10 uses MAGIC
+0x50530000 empty / 0x50530001 X, same as TRACK MUTES: only MAGIC_ON is
+on, and YES xors that 0/1.
 Input 0x40068fd0: YES wrap=1, LEFT/RIGHT/cursor wrap=0. wrap=0 returns
 without a store; wrap=1 toggles 0<->1. The three ANDY restore sites are
 widened pea 0x64 -> 0x70 so 0x800000dc survives power-off on a card build.
@@ -52,7 +56,7 @@ MODULE = Module(
     author="jonathanwardle1992-beep",
     author_url="https://github.com/jonathanwardle1992-beep",
     proof=Proof.UNTESTED,
-    proof_note="0.1.9 same-unit card (ELEK PS 0.1.9): with X, every [PLAY] starts from step 1. Assembled against original 1.40C guards. USB Keep/Undo and ot_emu untested.",
+    proof_note="0.1.10: PERSONALIZE empty unless MAGIC_ON; one YES ticks. 0.1.9 same-unit card started X and needed two YES to clear. USB Keep/Undo and ot_emu untested.",
     doc="PERSONALIZE -> PLAY START checkbox: empty keeps stock play/pause; ticked makes [PLAY] always start from the beginning.",
     linked=(
         Linked("playstart", f"{_HERE}/playstart.s"),

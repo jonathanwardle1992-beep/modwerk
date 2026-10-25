@@ -1,9 +1,17 @@
 [
   {
+    "version": "0.1.10-experimental",
+    "date": "2026-10-25",
+    "changes": [
+      "Do not treat 0.1.9-experimental as a pass for the PERSONALIZE default. Same-unit: PLAY START began ticked and needed two YES presses to show empty (0.1.9 stored 0/1 and treated any nonzero word as on, so leftover SRAM and a stale LIVE disagreed with the glyph). 0.1.10 stores MAGIC 0x50530000 empty / 0x50530001 X, like TRACK MUTES: only MAGIC_ON is ticked, YES xors that 0/1, cursor still does not store. 0.1.9 [PLAY] from-step-1 behaviour is unchanged. USB Keep/Undo and ot_emu untested."
+    ]
+  },
+  {
     "version": "0.1.9-experimental",
     "date": "2026-10-23",
     "changes": [
-      "Do not treat 0.1.8-experimental as a pass. Same-unit card of 0.1.8 (ELEK PS 0.1.8, SHA-256 4ba100e216192b25206bfeaf5d776171d103c719b0e5a79194f7bc06746ca880): [PLAY] still pauses and unpauses. Stock PLAY tests 0x460d1aec; when that word is 0 it never uses the 0x40061822/0x40061848/0x40061856 branch. It pauses with jsr 0x4009f5bc at 0x4006188a and starts with jsr 0x4009b964 at 0x40061892. 0.1.9 hooks that SEQ compare and seqpause. Same-unit card of 0.1.9 (ELEK PS 0.1.9, SHA-256 6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316): with PLAY START showing X, every [PLAY] starts from step 1 (no pause/unpause). Empty box is stock pause. USB Keep/Undo, MIDI transport and ot_emu are untested."
+      "Do not treat 0.1.8-experimental as a pass. Same-unit card of 0.1.8 (ELEK PS 0.1.8, SHA-256 4ba100e216192b25206bfeaf5d776171d103c719b0e5a79194f7bc06746ca880): [PLAY] still pauses and unpauses. Stock PLAY tests 0x460d1aec; when that word is 0 it never uses the 0x40061822/0x40061848/0x40061856 branch. It pauses with jsr 0x4009f5bc at 0x4006188a and starts with jsr 0x4009b964 at 0x40061892. 0.1.9 hooks that SEQ compare and seqpause. Same-unit card of 0.1.9 (ELEK PS 0.1.9, SHA-256 6e94a54bfe082ae0e11919d14f33fc4d5f00dc720a672160d53bea7a256ca316): with PLAY START showing X, every [PLAY] starts from step 1 (no pause/unpause). Empty box is stock pause. USB Keep/Undo, MIDI transport and ot_emu are untested.",
+      "Documentation (same version): qualification record and static ColdFire size/cycle estimate from this source. LCD captures for PROJECT > SYSTEM and PERSONALIZE PLAY START empty/X are still required before publication checks can pass."
     ]
   },
   {
