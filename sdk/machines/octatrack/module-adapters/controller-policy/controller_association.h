@@ -12,6 +12,8 @@ enum mw_controller_result { MW_CTL_OK, MW_CTL_CLOSED, MW_CTL_STALE, MW_CTL_CONFL
 enum mw_controller_operation { MW_CTL_RESET=1, MW_CTL_ENABLE, MW_CTL_DISABLE, MW_CTL_RESTORE };
 enum mw_controller_observation { MW_CTL_ACK=1, MW_CTL_REJECT, MW_CTL_TIMEOUT, MW_CTL_UNKNOWN };
 struct mw_controller_identity {
+    /* package_sha256: the row's controller digest (loader.h runtime_dsp.controller_sha256: the package without its DSP
+     * part), so an engine change keeps the row; the name is the rows' original one. */
     uint8_t package_sha256[32], source_policy_sha256[32];
     uint32_t module;
     uint16_t policy_revision, state_revision, parameter_revision;

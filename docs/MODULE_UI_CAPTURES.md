@@ -107,6 +107,12 @@ that fact in `access.noUiReason`, keep `screenshots` empty and document its
 actual host/device access steps. Owner review verifies this narrow exception;
 do not invent a menu or use unrelated stock pages as evidence.
 
+A module that only changes how stock controls behave, with no page and
+nothing drawn (Butter Fingers drops knob turns while a lock is edited), is not
+covered by `access.noUiReason`, which the contract allows only for automatic
+USB modules. Until the owner sets a rule, keep its `screenshots` empty in the
+draft, describe the gesture in `access.steps`, and say so in the pull request.
+
 ## Headless capture workflow
 
 Use a reviewed, locally built `ot_emu` and a local MAIN OS build from your own
@@ -286,10 +292,16 @@ plan; keep it in `capture.json` with the PNG hashes and the built `.syx` hash.
   (clocks are instruction counts, about 200M a second).
 - Keys use the panel's names (`FLTR`, `AMP`, `TRIG`, `FUNC`, `T1`…`T16`).
   Encoders are numbered 0 to 7: the top row A–D, then E–H, so FRQ on the
-  FILTER page is `4`.
+  FILTER page is `4`. Encoder `8` is LEVEL/DATA, which sets the tempo on the
+  TEMPO screen.
 - Turns of delta 1 move a parameter one step every five to nine turns. Use a
   larger delta for coarse moves (`--turn 4:-6@8000Mx37/20M` moved FRQ from
   127 to 61), then turns of `-1` or `1` 40M apart to land on an exact value.
 - The analog voices are stubbed, so a capture shows the screen, never the
   sound. Compare the same plan on stock 1.73 to confirm that only the
   module's pixels changed.
+- `--break ADDR` stops at a PC and prints the registers and stack. Do not
+  add `--break-after`: it runs the machine to that clock before the card is
+  attached and before any `--press` or `--turn` happens, so the state it stops
+  in is not the plan's. Leave out the turns you do not want to stop on
+  instead. `--trace N` adds the last N PCs to a fault report.

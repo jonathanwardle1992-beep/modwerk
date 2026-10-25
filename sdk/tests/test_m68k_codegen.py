@@ -104,7 +104,7 @@ class M68kCodegen(unittest.TestCase):
                     build = json.loads((document.parent / json.loads(document.read_text())['platform']['build']).read_text())
                     for release in build.get('releases', {}).values():
                         extra = build.get('cflags', []) + release.get('cflags', [])
-                        jobs += [(document.parent / s, elemod + extra, [document.parent / 'src'])
+                        jobs += [(document.parent / s, elemod + extra, [document.parent / 'src', machine.parent / 'include'])
                                  for s in build['sources'] if s.endswith('.c')]
             self.assertGreater(len(jobs), 20)
             objects = [compile_c(source, flags, work, includes) for source, flags, includes in jobs]

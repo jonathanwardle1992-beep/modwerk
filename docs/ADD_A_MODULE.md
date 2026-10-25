@@ -22,7 +22,8 @@ Every module follows [the guide for its category](module-guides/README.md): effe
 ## Rules that always apply
 
 - Never commit firmware, extracted stock code or tables, memory dumps, emulator cards or built images. Firmware stays on your computer. Stock code is referenced by address, length and SHA-256 and copied from each user's own OS file when they build.
-- Keep every author's credit and full licence text. Pin ported source to an exact commit. Both module contracts accept an optional `author.contributors` array of `{ "github": "handle", "name": "Display name" }` entries (`name` is optional). Each contributor appears on a separate line below the primary author in library cards, page headers and module information; describe their contribution in `author.credits` and the README. This attribution does not grant module ownership, report access or release authority; those continue to use the primary author and declared maintainers.
+- Keep every author's credit and full licence text. Pin ported source to an exact commit. Both module contracts accept an optional `author.contributors` array of `{ "github": "handle", "name": "Display name" }` entries (`name` is optional). Each contributor appears on a separate line below the primary author in library cards, page headers and module information; describe their contribution in `author.credits` and the README. List only people whose work is in the module; thank others, such as someone who investigated a port, in the README or the release notes. This attribution does not grant module ownership, report access or release authority; those continue to use the primary author and declared maintainers.
+- Ask the author first. Before you change the code, behaviour or wording of a module that names someone else as its author, get their OK on GitHub or Discord and link it in the pull request ([Ask the author first](DEVELOPER_WORKFLOW.md#ask-the-author-first)). When you import someone's module, @mention them on the pull request (or open an issue on their repository) before it merges. Say what was imported or changed and give them a chance to review: Modwerk lists them as the author, and users bring their problems to them. The licence may not require it; do it anyway.
 - Code or behaviour changes inside a module folder need a higher semantic `version` in its manifest, and the same version in `sdk/catalog.json` once listed. Documentation/media/prose-only edits need a version bump only when requesting automatic author publication.
 - No module depends on another. Each builds, installs and works when it is the only module chosen: no `requires`, no hooks into another module's code, no "needs X" selection rule, no pull request stacked on another module's. Shared code goes into the base or the shared SDK first, or the features ship as one module. Review refuses a dependent module, with no exception ([cross-compatibility](module-guides/README.md#cross-compatibility)).
 - One module per pull request. The owner approves the first release and changes beyond the registered author's scope. Later scoped updates can use automatic author publication after evidence verification and required checks.
@@ -50,6 +51,13 @@ separately; failures or unavailable paths remain explicit qualification gaps.
 - Octatrack native work also needs Python 3.10+, Docker and your own Octatrack OS 1.40C update file, kept outside the repository. Build the pinned toolchain image once: `docker build --file sdk/build/Dockerfile --tag modwerk-source-tools .`
 
 ## The fast loop
+
+Keep unqualified Octatrack work under `sdk/drafts/<id>/`, with its draft
+release notes in `CHANGELOG.json`. Every folder in `sdk/octabam/modules/` is
+validated for publication even when absent from `sdk/catalog.json`; placing
+a draft there blocks catalogue generation for everyone. Move it into that
+directory and move its notes into `src/community/module-changelogs/` only
+when the publication requirements are met.
 
 Run this after every edit. It takes about 15 seconds, never reads firmware and never runs module code.
 
@@ -80,13 +88,25 @@ Every module fix must include its changelog update in the same PR; do not defer 
 {
   "version": "0.1.5-experimental",
   "date": "2026-10-08",
-  "changes": ["Describe the user-visible fix or feature and any compatibility or saved-project limits."]
+  "changes": ["Fixes the step lights staying lit after STOP (#123)."]
 }
 ```
 
-Use the exact catalog/manifest version and the source-update date (`YYYY-MM-DD`). An optional `sourceCommit` is a full 40-character repository commit SHA; omit it until the referenced commit exists. Explain the actual fix or mitigation, not just “updated module”, and link the issue when available. Mention changed controls, migration requirements and remaining limitations when relevant. Never imply hardware or audio testing that did not happen. Imported releases must distinguish upstream implementation changes from Modwerk packaging or documentation changes.
+Use the exact catalog/manifest version and the source-update date (`YYYY-MM-DD`). An optional `sourceCommit` is a full 40-character repository commit SHA; omit it until the referenced commit exists. Write for the people who play the module: they read these notes on the module page and in the update email. Use at most five lines, each one plain sentence of at most 200 characters about what changed for them: a new feature, a fixed bug with its issue number, a changed control, something to redo after updating. “Updated module” is not enough. Leave out how it was done, measurements, addresses, internal names, test evidence and owner waivers; they belong in the pull request and the verification record. When players need to know a limit, add one line that starts with `Known issue:` in plain words, for example `Known issue: not yet tested on the MKI.` Never imply hardware or audio testing that did not happen. For an imported release, say in a few words whether upstream changed the module or Modwerk only repackaged it.
 
-`npm run check -- --base origin/main` and `npm run build` reject missing current-version notes, duplicate/invalid versions, malformed dates and unknown module IDs. `node scripts/module-changelogs.mjs` runs just this inexpensive metadata check. Regenerate catalogs after a manifest version changes, then validate before committing. Notes live outside module source folders so adding them does not invalidate retained qualification records or trigger native compilation.
+```json
+{
+  "version": "0.3.1-experimental",
+  "date": "2026-10-23",
+  "changes": [
+    "Fixes the Octatrack freezing while POLY8 plays (#646). When the CPU runs short, POLY8 now drops voices: release tails first, then the oldest notes.",
+    "Uses much less CPU on the beta base. The sound is unchanged.",
+    "Known issue: not yet tested on the MKI or after reloading a project."
+  ]
+}
+```
+
+`npm run check -- --base origin/main` and `npm run build` reject missing current-version notes, duplicate/invalid versions, malformed dates, unknown module IDs and entries over five lines or with a line over 200 characters. `node scripts/module-changelogs.mjs` runs just this inexpensive metadata check. Regenerate catalogs after a manifest version changes, then validate before committing. Notes live outside module source folders so adding them does not invalidate retained qualification records or trigger native compilation.
 
 The published release inventory includes these exact version-matched notes. Published module versions automatically notify their followers, including eligible prior downloaders. Update email is enabled by default and uses the existing daily module digest; members can unfollow a module or opt out of update/activity email. No per-release announcement opt-in is required, and legacy `announce` flags do not suppress notifications. Equal-version media or documentation edits do not replay an update, and superseded inventories never announce an older release. Before pushing a module update, the coding agent must tell the maintainer in chat that successful publication will notify followers, including by email according to their preferences; a push alone does not send mail. Update emails include the saved change list and limitations in HTML and plain text, with a link to the Changelog tab.
 
@@ -169,6 +189,28 @@ reboot where applicable. Give hardware steps and record actual results;
 emulator/host tests do not fill missing hardware qualification. Preserve the
 previous approved download while preparing candidates.
 
+**Growing a stock table over USB.** A runtime package carries no `TableGrow`
+(`sdk/runtime/loader/build.py --octabam` refuses `tables`). Keep the grown
+table in the module's own unit instead: zero placeholders that `StockCopy`
+fills from the guarded stock entries at install, your entries after them,
+and a `SymbolRef` on every stock reference to the table. One stock copy
+spans at most 32 bytes (`SITE_BYTES` in `loader.h`), so split a longer table
+into chunks with their own symbols. Card builds take the same growth as
+`TableGrow`: Modwerk's card builder accepts a stock copy only where it
+replays instructions a detour displaced, and refuses table copies at import.
+Elekloader's port runs a manifest as `octabam_<name>`, so a manifest can
+pick the form by `__name__` (`sdk/octabam/modules/dejavu/manifest.py`).
+
+**The strict stock-free scan can match original data.** Regular data
+(an icon bitmap, a full-cell mask, a C unit's per-access relocation list)
+can equal stock bytes over the minimum run.
+Find it with `module_packages.runs` and `check_stock_free.stock_runs`; vary
+bits the reader ignores (an icon column's low bits) or reach state through
+one pointer word per function (`sdk/drafts/butter-fingers`). A detour padded with `nop`s (`pad_to`) carries them in
+the package, and six in a row already match stock. When the stub jumps back
+past the displaced span, guard the whole span (an `expect` longer than the
+write) and write only the six-byte jump (Direct Jump Kyoti's `TS_HOOK`).
+
 A new module version rebuilds its USB package in the same pull request:
 `npm run octatrack:module-packages` with the m68k-elf toolchain and the
 Elekloader checkout (`npm run upstream:tools`), then `-- --check` until every
@@ -202,6 +244,7 @@ the [loader compatibility guide](../sdk/machines/octatrack/elekloader/README.md#
    - Record the worst-case cycles for each processor and the exact memory regions and totals. New FX should aim for DSP cost in the same ballpark as worst-case stock SPRING REV. Plan around that reference before implementation and compare expensive types/settings, moving controls and trigger splits under matched conditions on both cores. This is a design target without a fixed ratio or hard per-effect ceiling; substantially higher cost needs optimization and review of the remaining headroom.
    - For an effect, also check how it sounds: aliasing, clipping, DC and idle behaviour (`npm run fx:audit`, [effects guide](module-guides/effects.md#sound-quality)). Paste the table into TESTING.md, or write "not tested". No gate in CI runs it.
    - Add a hardware report from a real unit, stating its model, how long it ran, what was tested and the limitations. There is no minimum duration or track count.
+   - A fix for a stock bug can be regressed in the emulator: `ot_emu`'s `call <address> [args]` runs a stock routine on a booted image, after `poke` has set up the state (Direct Jump Kyoti's `verify.py`, part 6, runs the MIDI Plays-Free stall on the original OS and on the module image).
    - If you could not test on hardware, say so in the pull request. Only the owner can waive this, for one exact version.
    - Hardware tests are planned to run automatically over USB with a customised test firmware ([decision](DECISIONS.md#5-october-2026--a-faster-module-workflow)).
 4. **List it and compile the packages without firmware.** The build compiles every module in `sdk/catalog.json`, so add an entry for yours first: `id`, `version` and `addedAt`, the UTC time it was first added (for example `2026-10-05T12:00:00Z`). From then on, `modules:check` also requires the complete qualification record, documentation and screenshots. Commit, then run this from the clean checkout. The output folder must not exist yet.
@@ -225,6 +268,7 @@ the [loader compatibility guide](../sdk/machines/octatrack/elekloader/README.md#
    - **What it builds.** Native octabam builds your module inside the toolchain image, without network: alone, beside each other module, in the fullest selections and in a fixed sample in between, each with and without the stock FX2 effects.
    - **What must match.** Modwerk's browser builder must refuse what native refuses, and reproduce what native builds.
    - **What it updates.** It records the native pair checks (`npm run modules:pairs`) and your module's chooser entry, and writes `sdk/native-comparisons/<id>.json`. Commit everything it changed.
+   - **Updates.** It reads the catalogue regenerated at the new version, and that regenerates only once the qualification record, hardware report included, names the version. Record the hardware result first, then run it.
    - **Reruns.** Native results are cached, so after a fix only the affected builds run again. After a change to `src/engine/` alone, `npm run module:verify -- --all --os <file> --check` repeats only the browser side for every recorded module.
    - **Your firmware.** The MAIN OS extracted from your file stays in `~/.cache/modwerk-native`, outside the checkout, with the cache. `npm run module:verify -- --clean` deletes it.
    - **New shapes.** A module with a shape no earlier module had, such as one that replaces a stock effect or claims new memory, needs changes in both `src/engine/` and `sdk/octabam/tools/build/build_bus.py`. Expect the comparison to point at them.
@@ -232,7 +276,6 @@ the [loader compatibility guide](../sdk/machines/octatrack/elekloader/README.md#
 7. **Check how it shows on the site.** The catalog entry puts the module in the library and the configurator; `npm run dev` shows it.
    - The library card draws `presentation/thumbnail.svg` (320×192). Hand-drawn art in `src/components/ModulePreview.tsx` is optional.
    - Analog BD admits only the custom DSP effects named in `analogBdCompanions` in `src/catalog/selection-conflicts.ts` and refuses every other module with an `effectId`. Add yours there only after native/browser placement evidence on both cores. If your effect builds beside the stock FX2 effects, add it to `FITS_BESIDE_STOCK_FX2` in the same file. Both lists describe baked card placement, not the USB arena; see the [USB lifecycle](#octatrack-base-and-usb-lifecycle).
-   - Add a short entry to `docs/VERIFICATION.md` with what you compared and the result.
 8. **Open the pull request.** Say what you tested, what you did not test and why.
 
 ## Digitakt and Digitone
@@ -252,7 +295,7 @@ Firmware for these machines is built by elekloader's builder, vendored unchanged
 4. Build it in `npm run dev` with your own stock OS file, flash it and test it. Then set `evidence.tier` to what you actually did ([tiers](SDK.md#evidence-tiers)).
 
 **Writing a new mod:** `npm run module:new -- my-mod --machine digitakt --author <github-login>` creates the folder (`--machine digitone` for Digitone).
-- Write `src/`, and subscribe to core events in `build.json` ([events and budgets](../sdk/machines/digitakt/README.md)).
+- Write `src/`, and subscribe to core events in `build.json` ([events and budgets](../sdk/machines/digitakt/README.md)). Look at the core's events and newer upstream core releases first. A stock site several mods will need is proposed as an event before the mod ([propose an event](module-guides/README.md#propose-an-event-on-the-digitakt-digitone-or-digitakt-ii)); a site only this mod needs, it patches and claims ([choose how a module hooks in](module-guides/README.md#choose-how-a-module-hooks-in)).
 - Modwerk compiles the source in its pinned toolchain ([source builds](ELEMOD_SOURCE_BUILDS.md)).
 - The browser builds only from the `.elemod` files in elekloader's catalog, so to appear in the configurator a new mod needs an `.elemod` release pinned in its own record, `sdk/imports/elekloader-<id>-<date>.json`, and downloaded with `npm run elekloader:update -- --overlay <that record>`. Never edit `vendor/elekloader/catalog/catalog.json`: it is generated from the upstream catalog and the records.
 - `npm run module:doctor -- <id>` checks the module's manifest, category guide, catalog pin and module rules.
@@ -269,4 +312,4 @@ Firmware for these machines is built by elekloader's builder, vendored unchanged
 | Contract v3 and evidence tiers | [SDK.md](SDK.md) |
 | Writing native Octatrack code | [MODULES.md](../sdk/octabam/docs/remixer/MODULES.md) and [PLACEMENT.md](../sdk/octabam/docs/remixer/PLACEMENT.md) |
 | Assembler and hardware traps that already cost real work | [octabam's AGENTS.md](../sdk/octabam/AGENTS.md) |
-| What has been verified, and how | [VERIFICATION.md](VERIFICATION.md) |
+| Where results and records go, and every other document | [docs/README.md](README.md) |

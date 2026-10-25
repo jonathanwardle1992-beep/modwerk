@@ -37,7 +37,14 @@ static int __attribute__((noinline)) ab_lease_end(struct mw_controller_write_lea
         ('    ++ab_render_calls;', '''    struct mw_controller_write_lease lease;
     /* Without an owned lease the frame still needs this track's record: the
      * stock silent source (kinds 5..7) writes an empty header and zero samples
-     * at the track's cursor, never an AB signature or borrowed Part bytes. */
+     * at the track's cursor, never an AB signature or borrowed Part bytes.
+     * The frame's first call (before the event offset) writes no control
+     * record, only that reservation: it goes there at once, so a frame takes
+     * one lease, not two (each Begin/End proves the owner through uncached
+     * reads; two a frame cost the ColdFire about 20 points, 22 Oct 2026). The
+     * second call writes the record at the packer's fixed slot either way. */
+    if(end!=16)
+        return ((int (*)(unsigned,unsigned,unsigned,unsigned))0x400047f0u)(track,ping,start,end);
     if(modwerk_controller_write_begin((uintptr_t)ab_render,
         MW_CONTROLLER_WRITE_ANALOG_BD,&lease)!=1)
         return ((int (*)(unsigned,unsigned,unsigned,unsigned))0x400047f0u)(track,ping,start,end);

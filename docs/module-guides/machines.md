@@ -13,7 +13,7 @@ Read [the module guides index](README.md) first. A machine that sequences notes 
 
 A new machine must be a first-class entry wherever the instrument lists machines. Analog BD shows what that takes: about twenty guarded detours, each named for the place it covers (`sdk/octabam/modules/analog-bassdrum/manifest.py`).
 
-- [ ] **The machine chooser.** The track's machine list opens on your machine for a track that uses it, highlights it, and admits it when the choice is committed (`ab_chooser_open`, `ab_chooser_row`, `ab_main_commit`).
+- [ ] **The machine chooser.** The track's machine list opens on your machine for a track that uses it, highlights it, and admits it when the choice is committed (`ab_chooser_open`, `ab_chooser_row`, `ab_main_commit`). It shows six rows at a time and stock's draw loop never scrolled, so with four machines the last three were hidden; the USB base draws the rows from the list's scroll offset (`mw_chooser_name`, `mw_chooser_row`). Check your row is reachable with every other machine installed.
 - [ ] **SRC SETUP.** The same machine is selectable there, with its row highlighted, and every commit path admits it (`ab_src_names`, `ab_setup_open`, `ab_setup_row`, `ab_src_commit`, `ab_src_commit2`, `ab_setup_edit6`, `ab_setup_draw6`).
 - [ ] **Its name everywhere the stock machine names appear,** including the main page (`ab_machine_name`, `ab_name_a`, `ab_name_b`).
 - [ ] **Closing a window does not clear its retained callbacks.** Snapshot the exact original handler, label and destination roots; fence current and paused consumers, then restore those roots before retiring the outgoing image. A null window handle alone is not a lifetime proof.
@@ -26,6 +26,7 @@ A new machine must be a first-class entry wherever the instrument lists machines
 - [ ] **LFO destinations.** Every continuous machine parameter works as an LFO destination without a crash or a step. **Verify** with `stress_project.py` (three LFOs per track) and record which parameters you modulated.
 - [ ] **Save and reload.** A project saved with the machine reloads it, with its parameters and model. Say what a build without the module shows for that track. **Verify.**
 - [ ] **The stock machines still work,** on the same track and on others.
+- [ ] **A bounded render.** A machine that renders on the ColdFire (POLY8, FM Synth, VECTOR) runs in the frame interrupt, and USB, the UI and every task wait while it runs. Time your render with DTCN3 and bound it, as POLY8 0.3.1's voice governor does. On USB bases the base's frame guard gives the frame interrupt 80 % of each frame and renders stock's silent source for a machine track whose render would overdraw that, so an unbounded machine drops out in a busy project instead of freezing the unit; card builds have no guard. **Verify** with `npm run device -- guard` on a development base: in the busiest pattern you support, it reports no skips ([traps](../OCTATRACK_HARDWARE_TRAPS.md#dsp-loader-dynamic-dsp-code)).
 
 Test in layers, as Analog BD does: the DSP engine, the ColdFire glue, the port (emulator) and the UI are four verifiers (`verify_analog_bassdrum.py`, `verify_analog_bassdrum_cf.py`, `verify_analog_bassdrum_port.py` and `verify_analog_bassdrum_ui.py`). Real screenshots must show the chooser, SRC SETUP and the parameter pages.
 

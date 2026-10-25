@@ -4,6 +4,7 @@
 import importlib.util
 import json
 import os
+import struct
 import subprocess
 import sys
 import tempfile
@@ -64,6 +65,43 @@ def only_key_bus(capabilities):
     return checked
 
 
+def engines(capabilities, dsp_words):
+    """ABI 10: a base-bound controller's engine for the base's hook sites (Analog BD: module-adapters/hook_engines.py).
+    The pinned builder reads ABI 6 to 9; an engine package reads as its controller (the same records, its DSP part
+    dropped: sdk/runtime/loader/abi9.py) plus `requires`, `claims` and `entries`, and its stock-free scan covers the
+    engine's words and its initial words. Here, not in the builder, whose source the base and the cave declarations pin."""
+    spec = importlib.util.spec_from_file_location('module_packages_abi9', APP / 'sdk/runtime/loader/abi9.py')
+    abi9 = importlib.util.module_from_spec(spec); spec.loader.exec_module(abi9)
+
+    def parts(data):
+        """(the controller as ABI 8, the engine's words then its initial words) of an ABI 10 package."""
+        end = abi9._claims_end(data)
+        words, count = struct.unpack_from('>IH', data, 32)
+        claims, entries = data[78], data[79]
+        init = sum(struct.unpack_from('>I', data, end + 12 * i + 8)[0] for i in range(claims) if data[end + 12 * i + 2] & 4)
+        if (struct.unpack_from('>H', data, 4)[0] != 10 or data[39] or not entries or entries > 8 or words > 4096 or init > 4096
+                or end + 12 * claims + 8 * entries + 4 * words + 2 * count + 4 * init != len(data)):
+            raise ValueError('The published runtime package has an unsupported ABI 10 engine.')
+        controller = data[:4] + struct.pack('>H', 8) + data[6:32] + bytes(18) + data[50:76] + data[80:end]
+        at = end + 12 * claims + 8 * entries
+        values = struct.unpack_from('>%dI' % words, data, at) + struct.unpack_from('>%dI' % init, data, at + 4 * words + 2 * count)
+        return controller, values
+
+    def engine_capabilities(data):
+        if len(data) < 80 or data[:4] != b'MWRM' or struct.unpack_from('>H', data, 4)[0] != 10:
+            return capabilities(data)
+        found = capabilities(parts(data)[0])
+        requires, claims, entries = struct.unpack_from('>HBB', data, 76)
+        return dict(found, abi=10, requires=requires, claims=claims, entries=entries)
+
+    def engine_words(data):
+        if len(data) < 80 or data[:4] != b'MWRM' or struct.unpack_from('>H', data, 4)[0] != 10:
+            return dsp_words(data)
+        values = parts(data)[1]
+        return [b''.join(v.to_bytes(3, order) for v in values) for order in ('big', 'little')]
+    return engine_capabilities, engine_words
+
+
 def main():
     spec = importlib.util.spec_from_file_location(
         'octatrack_module_packages', APP / 'sdk/machines/octatrack/elekloader/module_packages.py')
@@ -74,7 +112,7 @@ def main():
     # Use its documented relative-path form, without altering any base input.
     builder.DSP = builder.DSP.relative_to(APP)
     if hasattr(builder, 'capabilities'):
-        builder.capabilities = only_key_bus(builder.capabilities)
+        builder.capabilities, builder.dsp_words = engines(only_key_bus(builder.capabilities), builder.dsp_words)
     os.chdir(APP)
     # Python's -X utf8 does not propagate to the builder's Python children.
     os.environ['PYTHONUTF8'] = '1'

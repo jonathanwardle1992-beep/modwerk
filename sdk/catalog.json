@@ -59,8 +59,13 @@
     },
     {
       "id": "lofi2",
-      "version": "0.1.0-experimental",
+      "version": "0.1.1-experimental",
       "addedAt": "2026-10-12T23:40:23Z"
+    },
+    {
+      "id": "ring-sc",
+      "version": "0.2.0-experimental",
+      "addedAt": "2026-10-20T12:00:00Z"
     },
     {
       "id": "analog-bassdrum",
@@ -124,7 +129,7 @@
     },
     {
       "id": "poly8",
-      "version": "0.3.0-experimental",
+      "version": "0.3.1-experimental",
       "addedAt": "2026-10-08T12:00:00Z"
     },
     {
@@ -134,13 +139,23 @@
     },
     {
       "id": "quantize-live-rec-toggle",
-      "version": "0.1.0-experimental",
+      "version": "0.1.1-experimental",
       "addedAt": "2026-10-12T21:00:00Z"
     },
     {
       "id": "apply-scene",
-      "version": "0.1.0-experimental",
+      "version": "0.2.0-experimental",
       "addedAt": "2026-10-15T16:00:00Z"
+    },
+    {
+      "id": "direct-jump-kyoti",
+      "version": "0.1.2-experimental",
+      "addedAt": "2026-10-24T12:00:00Z"
+    },
+    {
+      "id": "dejavu",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-10-24T15:30:00Z"
     }
   ]
 }

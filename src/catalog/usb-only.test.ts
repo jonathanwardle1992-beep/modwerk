@@ -15,6 +15,7 @@ describe('modules that need the Modwerk base', () => {
   })
 
   it('follows the published packages', () => {
+    expect(moduleUsbOnly('ring-sc')).toBe(true) // RINGMOD SC: its package requires the key bus
     for (const entry of packages.packages as { id: string; requires?: number }[]) {
       expect(moduleUsbOnly(entry.id)).toBe(!!entry.requires)
       if (!entry.requires) expect(cardBuildError([entry.id])).toBe('')
