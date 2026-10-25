@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "id": "track-mutes",
+  "key": "TRACK MUTES",
+  "name": "Track Mutes",
+    "version": "0.1.32-experimental",
+  "category": "system",
+  "author": {
+    "github": "jonathanwardle1992-beep",
+    "credits": [
+      "jonathanwardle1992-beep: TRACK MUTES PERSONALIZE row, the T1-T8 mute/select swap, documentation and thumbnail."
+    ]
+  },
+  "nativeManifest": "manifest.py",
+  "presentation": {
+    "label": "T1-T8 mute; FUNC+T selects",
+    "family": "Track mute buttons",
+    "summary": "PERSONALIZE checkbox: when ticked, T1-T8 mute and unmute; FUNC plus a track button selects that track so the knobs and pages edit it.",
+    "overview": "A global panel setting: track buttons mute, FUNC+track selects that track for editing. Tick it in PERSONALIZE. Default empty is stock (T selects, FUNC+T mutes), so installing the module changes nothing until you enable it.",
+    "highlights": [
+      "Default empty box: stock T1-T8 select the track; FUNC+T mutes.",
+      "Ticked: T1-T8 mute and unmute, including several at once, on the current audio or MIDI page only; FUNC+T1-T8 selects that track for editing; FUNC+double-tap T browses and assigns a sample on an audio track. CUE+T stays stock.",
+      "PERSONALIZE only: not a Part or project field. Mute Modes and Play Start cannot be chosen with it until PERSONALIZE is a shared base table."
+    ],
+    "usage": [
+      "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to TRACK MUTES.",
+      "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
+      "Press T1, or several T keys together: those tracks mute or unmute. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track."
+    ]
+  },
+  "access": {
+    "location": "PROJECT > SYSTEM > PERSONALIZE > TRACK MUTES",
+    "steps": [
+      "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to TRACK MUTES.",
+      "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
+      "Press T1, or several T keys together: those tracks mute or unmute. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track."
+    ],
+    "screenshots": []
+  },
+  "controls": [
+    {
+      "name": "TRACK MUTES",
+      "default": 0,
+      "count": 2,
+      "labels": [
+        "empty",
+        "X"
+      ],
+      "doc": "Empty box is stock T=select / FUNC+T=mute. Ticked (X) makes T1-T8 mute/unmute and FUNC+T select the track for editing. Stock checkbox: YES ticks or clears; cursor motion must not change it. Stored in PERSONALIZE, not in the project."
+    }
+  ],
+  "compatibility": {
+    "firmware": "1.40C",
+    "effectId": null,
+    "location": "Audio tracks",
+    "conflicts": [
+      "mute-modes",
+      "play-start",
+      "playmodes"
+    ],
+    "uiClaims": [
+      "key:TRACK",
+      "key:FUNC+TRACK"
+    ],
+    "limitations": [
+      "OS 1.40C. 0.1.31 same-unit: AED still does not follow FUNC+T. 0.1.32 copies the track sample record then redraws AED. USB Keep/Undo and ot_emu untested.",
+      "Conflicts with Mute Modes, Play Start and Play Modes: PERSONALIZE tables / ANDY length, and Play Modes also owns the TRACK key handler.",
+      "CUE+T is not taken. Audio-track mutes and MIDI-track mutes are separate pages, as on stock FUNC+T.",
+      "An OS upgrade resets PERSONALIZE."
+    ]
+  },
+  "resources": {
+    "recorded": "23 October 2026; source only, unmeasured",
+    "storage": {
+      "label": "ROM unit, detour and PERSONALIZE table growth",
+      "display": "Unmeasured",
+      "value": null,
+      "unit": "bytes",
+      "method": "unmeasured",
+      "conditions": "One ColdFire unit, two six-byte detours, ANDY length pokes and relocated PERSONALIZE pointer arrays. No DSP memory.",
+      "source": "TESTING.md"
+    },
+    "processing": {
+      "label": "ColdFire, per T1-T8 press",
+      "display": "Unmeasured",
+      "value": null,
+      "unit": "instructions/event",
+      "method": "unmeasured",
+      "conditions": "Runs in the T1-T8 key handler when TRACK MUTES is ON. Nothing per sample.",
+      "source": "TESTING.md"
+    },
+    "impact": {
+      "conditions": "Key-press handler; default OFF adds a test and a branch.",
+      "cpu": {
+        "level": "minimal",
+        "basis": "source-estimate",
+        "rationale": "A handful of ColdFire instructions on a T1-T8 press; no per-frame work except a restore no-op on module_tick.",
+        "source": "TESTING.md"
+      },
+      "dsp": {
+        "level": "minimal",
+        "basis": "source-estimate",
+        "rationale": "No DSP code.",
+        "source": "manifest.py"
+      },
+      "memory": {
+        "level": "minimal",
+        "basis": "source-estimate",
+        "rationale": "Small ROM unit and one PERSONALIZE word with its battery shadow.",
+        "source": "TESTING.md"
+      }
+    }
+  },
+  "tests": {
+    "report": "TESTING.md",
+    "summary": "0.1.7 same-unit: pages stay on T1; simultaneous T mutes still temperamental. 0.1.8 hooks FUNC-layer T keys.",
+    "hardwareStatus": "untested",
+    "evidenceRevision": "1be0ad573cc45ae1843d0da1bbed61578f53eabf",
+    "gates": [
+      "modules/track-mutes/verify.py"
+    ]
+  },
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE",
+    "declaration": "Original module by jonathanwardle1992-beep, MIT. No firmware, extracted stock code or built images are included."
+  },
+  "media": []
+}
