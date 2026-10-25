@@ -56,7 +56,7 @@ jonathanwardle1992-beep: behaviour, ColdFire source, PERSONALIZE row and documen
 
 ## Screens and audio
 
-Publication needs three real black-and-white LCD captures (emulator framebuffer or a hardware photograph of the 128×64 screen, integer scale, no redrawn labels): PROJECT > SYSTEM, PERSONALIZE with PLAY START selected and the box empty, and the same row with X. Drop them at `media/ot-system.png`, `media/ot-personalize-empty.png` and `media/ot-personalize-ticked.png`, then fill `media/capture.json`. The module makes no sound of its own.
+Hardware LCD photographs, 25 October 2026. SYSTEM STATUS shows the card stamp; PERSONALIZE is where PLAY START is ticked. The module makes no sound of its own.
 
 ![PROJECT > SYSTEM](media/ot-system.png)
 

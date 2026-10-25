@@ -78,10 +78,4 @@ Authored ROM is one ColdFire unit of 274 bytes (native linked `playstart`). Plus
 
 ## OT UI capture evidence
 
-Pending. Need real 128×64 LCD pixels (headless `ot_emu` or a hardware photograph), integer scale, two greys, no reconstructed labels:
-
-1. PROJECT > SYSTEM (`media/ot-system.png`)
-2. PERSONALIZE with PLAY START selected, empty box (`media/ot-personalize-empty.png`)
-3. The same row with X (`media/ot-personalize-ticked.png`)
-
-Mute-modes' capture plan (three NO, MENU, LEFT, DOWN, RIGHT, then SYSTEM → PERSONALIZE) is the starting gesture. Never commit firmware, dumps or cards.
+Hardware LCD photographs, 25 October 2026, in `media/` (`capture.json`). SYSTEM STATUS stamp on the photographed unit reads `PS 0.1.9`. PERSONALIZE shows PLAY START empty and ticked. Never commit firmware, dumps or cards.

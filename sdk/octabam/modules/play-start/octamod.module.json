@@ -114,9 +114,9 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "0.1.9 same-unit: [PLAY] from step 1 when X, but PERSONALIZE began ticked and needed two YES to clear. 0.1.10 packed (MAGIC empty/X, one YES); not flashed. LCD captures still required.",
+    "summary": "0.1.9 same-unit: [PLAY] from step 1 when X, but PERSONALIZE began ticked and needed two YES to clear. 0.1.10 packed (MAGIC empty/X). Hardware LCD photos 25 Oct 2026: PLAY START empty and ticked; SYSTEM STATUS stamp reads PS 0.1.9.",
     "hardwareStatus": "reported",
-    "evidenceRevision": "ef7b8a61af9d8cc8a7647a6e4f1935e4f7d854db",
+    "evidenceRevision": "ca547781153c2ea03a16592985d3baa7e44e9791",
     "gates": [
       "modules/play-start/verify.py"
     ],
@@ -165,14 +165,14 @@
         "kind": "functional",
         "status": "reported",
         "model": null,
-        "testedOn": "2026-10-23",
+        "testedOn": "2026-10-25",
         "tester": "jonathanwardle1992-beep",
-        "sourceRevision": "ef7b8a61af9d8cc8a7647a6e4f1935e4f7d854db",
+        "sourceRevision": "ca547781153c2ea03a16592985d3baa7e44e9791",
         "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
-        "summary": "0.1.9 same-unit: with X, every [PLAY] starts from step 1. PERSONALIZE later began ticked and needed two YES to clear. 0.1.10 packed from this source (MAGIC empty/X, one YES) is not flashed. 0.1.0–0.1.8 failed as in TESTING.md.",
+        "summary": "0.1.9 same-unit: with X, every [PLAY] starts from step 1. PERSONALIZE later began ticked and needed two YES to clear. Hardware LCD photos 25 Oct 2026 show PLAY START empty and ticked; SYSTEM STATUS stamp reads PS 0.1.9. 0.1.10 is packed (MAGIC empty/X, card SHA-256 above).",
         "limitations": [
-          "This exact 0.1.10 image was not run on the unit.",
-          "USB Keep/Undo, MIDI transport, ot_emu and LCD captures are untested.",
+          "SYSTEM STATUS on the photographed unit reads PS 0.1.9, not the packed 0.1.10 ELEK stamp.",
+          "USB Keep/Undo, MIDI transport and ot_emu are untested.",
           "[REC] + [PLAY], pickup machines, chained patterns and an MKI panel are untested.",
           "PLAY START alone on a card build; Mute Modes cannot share PERSONALIZE with it.",
           "Cycle and memory figures are static authored bounds, not chip wall-clock or a linker report.",
@@ -206,27 +206,27 @@
   "media": [
     {
       "path": "media/ot-system.png",
-      "captureType": "emulator",
-      "caption": "Press [PROJ], open SYSTEM. This is the PROJECT > SYSTEM page. PERSONALIZE is one of the rows below; open it next for PLAY START.",
-      "alt": "PROJECT > SYSTEM on the Octatrack LCD.",
-      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until media/ot-system.png is an actual 128x64 capture of this image.",
+      "captureType": "hardware",
+      "caption": "Open PROJECT, then SYSTEM, then STATUS. OS VERSION shows the card stamp. PERSONALIZE is the next SYSTEM row for PLAY START.",
+      "alt": "SYSTEM STATUS on the Octatrack LCD; OS VERSION reads PS 0.1.9.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
       "license": "LicenseRef-OT-UI-Documentation",
       "source": "original",
       "otUi": {
-        "page": "PROJECT / SYSTEM",
+        "page": "SYSTEM STATUS",
         "shows": "location",
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
         "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
-        "setup": "Capture not made yet. Intended: headless ot_emu; MKII panel; stopped transport; 128x64 LCD at integer scale 6; private PLAY START 0.1.9 MAIN (SHA-256 in this field). Missing-project prompts dismissed with NO. Never commit firmware."
+        "setup": "Hardware photograph of the LCD, 25 October 2026. Cropped to the glass, two greys, 768x384 nearest neighbour. Photographed SYSTEM STATUS stamp reads PS 0.1.9. Packed 0.1.10 MAIN SHA-256 is this field."
       }
     },
     {
       "path": "media/ot-personalize-empty.png",
-      "captureType": "emulator",
+      "captureType": "hardware",
       "caption": "Open PERSONALIZE and scroll to PLAY START. The empty box is stock play/pause. Only YES ticks the box; cursor keys must not change it.",
-      "alt": "PERSONALIZE with PLAY START selected and the checkbox empty.",
-      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until the PNG is an actual capture of PLAY START empty.",
+      "alt": "PERSONAL SETTINGS with PLAY START highlighted and the checkbox empty.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
       "license": "LicenseRef-OT-UI-Documentation",
       "source": "original",
       "otUi": {
@@ -235,15 +235,15 @@
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
         "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
-        "setup": "Capture not made yet. Intended: same private 0.1.9 MAIN as ot-system.png; PERSONALIZE row PLAY START empty."
+        "setup": "Same hardware session as ot-system.png. PLAY START selected, empty box."
       }
     },
     {
       "path": "media/ot-personalize-ticked.png",
-      "captureType": "emulator",
+      "captureType": "hardware",
       "caption": "Press YES so PLAY START shows X. Close the menu. Every [PLAY] now starts from step 1 instead of pausing. [STOP] still stops.",
-      "alt": "PERSONALIZE with PLAY START selected and the checkbox showing X.",
-      "credit": "Pending real LCD capture; do not treat this record as a reviewed screenshot until the PNG is an actual capture of PLAY START ticked.",
+      "alt": "PERSONAL SETTINGS with PLAY START highlighted and the checkbox showing X.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
       "license": "LicenseRef-OT-UI-Documentation",
       "source": "original",
       "otUi": {
@@ -252,7 +252,7 @@
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
         "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
-        "setup": "Capture not made yet. Intended: same private 0.1.9 MAIN as ot-system.png; PERSONALIZE row PLAY START ticked."
+        "setup": "Same hardware session as ot-system.png. PLAY START selected, ticked."
       }
     }
   ]
