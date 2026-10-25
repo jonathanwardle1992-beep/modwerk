@@ -84,16 +84,16 @@ Do not treat `0.1.32-experimental` as a pass until those card results exist.
 
 ## Performance
 
-Not run. `evidence/performance.json` is not filled with measurements. New-module `perf:audit` remains open.
+Static bound only. Authored ColdFire in `trackmutes.s` is 438 instruction lines. Worst-case event used for qualification is that whole unit if every opcode ran once (438), as a conservative static ceiling, not a measured path. Stock `jsr` callees, cache and wait states are not included. Chip wall-clock and `ot_emu` executed-instruction traces are unmeasured. New-module `perf:audit` remains open.
 
 ## Resources
 
-Unmeasured. Authored ROM is one ColdFire unit (PERSONALIZE checkbox, getter/setter, T1-T8 gate) plus one six-byte detour, three four-byte ANDY pokes, a two-byte row-count poke, and relocated PERSONALIZE pointer arrays. No DSP memory.
+Static estimate of the authored unit: 1688 bytes (instruction-length sum of `trackmutes.s` at 2/4/6 bytes plus `.asciz`/`.byte`/`.long`; `m68k-elf-as` was not on this Windows host, so this is not the linker report). Plus two six-byte T-key detours, ANDY length pokes, a row-count poke, and relocated PERSONALIZE pointer arrays in stock space (not counted as extra module RAM). One PERSONALIZE word and its ANDY shadow are stock SRAM. No DSP memory. One instance.
 
 ## Hardware
 
-`0.1.0`–`0.1.31` same-unit, 24–25 October 2026, as above. `0.1.32` not yet flashed.
+`0.1.0`–`0.1.31` same-unit, 24–25 October 2026, as above. Hardware LCD photographs 25 October 2026 show SYSTEM STATUS `TM 0.1.32` and TRACK MUTES empty then ticked. AED follow is not in those photos. See [evidence/hardware.md](evidence/hardware.md).
 
 ## OT UI capture evidence
 
-Pending: PERSONALIZE with TRACK MUTES selected, empty and ticked. Never commit firmware, dumps or cards.
+Hardware LCD photographs, 25 October 2026, in `media/` (`capture.json`). SYSTEM STATUS stamp reads `TM 0.1.32`. PERSONALIZE shows TRACK MUTES empty and ticked. Never commit firmware, dumps or cards.

@@ -35,7 +35,11 @@
       "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
       "Press T1, or several T keys together: those tracks mute or unmute. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track."
     ],
-    "screenshots": []
+    "screenshots": [
+      "media/ot-system.png",
+      "media/ot-personalize-empty.png",
+      "media/ot-personalize-ticked.png"
+    ]
   },
   "controls": [
     {
@@ -70,23 +74,23 @@
     ]
   },
   "resources": {
-    "recorded": "23 October 2026; source only, unmeasured",
+    "recorded": "25 October 2026; static source estimate",
     "storage": {
       "label": "ROM unit, detour and PERSONALIZE table growth",
-      "display": "Unmeasured",
-      "value": null,
+      "display": "1688 bytes authored ColdFire (static)",
+      "value": 1688,
       "unit": "bytes",
-      "method": "unmeasured",
-      "conditions": "One ColdFire unit, two six-byte detours, ANDY length pokes and relocated PERSONALIZE pointer arrays. No DSP memory.",
+      "method": "static",
+      "conditions": "Instruction-length sum of trackmutes.s (2/4/6-byte opcodes plus data). m68k-elf-as was not on this Windows host, so this is not the linker report. Detours and ANDY pokes sit in stock space. No DSP memory.",
       "source": "TESTING.md"
     },
     "processing": {
       "label": "ColdFire, per T1-T8 press",
-      "display": "Unmeasured",
-      "value": null,
+      "display": "438 authored instructions static ceiling",
+      "value": 438,
       "unit": "instructions/event",
-      "method": "unmeasured",
-      "conditions": "Runs in the T1-T8 key handler when TRACK MUTES is ON. Nothing per sample.",
+      "method": "static",
+      "conditions": "Conservative ceiling: every authored opcode in the unit counted once. Stock jsr callees, cache and wait states are not included. Nothing per sample. Chip time unmeasured.",
       "source": "TESTING.md"
     },
     "impact": {
@@ -113,17 +117,145 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "0.1.7 same-unit: pages stay on T1; simultaneous T mutes still temperamental. 0.1.8 hooks FUNC-layer T keys.",
-    "hardwareStatus": "untested",
-    "evidenceRevision": "1be0ad573cc45ae1843d0da1bbed61578f53eabf",
+    "summary": "0.1.0–0.1.31 same-unit cards failed as in TESTING.md. Hardware LCD photos 25 Oct 2026: SYSTEM STATUS TM 0.1.32; PERSONALIZE TRACK MUTES empty and ticked. AED follow of FUNC+T is still unverified.",
+    "hardwareStatus": "reported",
+    "evidenceRevision": "7f5cb5cbde61162319e7a7881b692f523f5beba7",
     "gates": [
       "modules/track-mutes/verify.py"
-    ]
+    ],
+    "qualification": {
+      "moduleVersion": "0.1.32-experimental",
+      "sourceSha256": "573e3127a39f6f4d2edb6efaade3e310222d1be2985b9033e130ff1616e1c145",
+      "imageSha256": "80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624",
+      "cycles": [
+        {
+          "processor": "coldfire",
+          "worstCase": 438,
+          "maxConfiguration": 438,
+          "maxInstances": 1,
+          "budget": 26600000,
+          "unit": "cycles/event",
+          "method": "static",
+          "conditions": {
+            "parameterExtremes": "TRACK MUTES empty: T and FUNC+T take the stock six-byte continue. Ticked: T mute/unmute on the current audio or MIDI page, FUNC+T select, FUNC+double-tap sample list on audio tracks, QUICK MUTE on trigs 1–16, FUNC+REC1/2 overlay create.",
+            "parameterModulation": "Not applicable: no DSP, no per-sample work, no LFO or p-lock of this setting.",
+            "modeSwitching": "YES toggles the checkbox; cursor motion must not. Audio-page mutes and MIDI-page mutes stay separate. T8 with MASTER ON skips the MASTER TRACK overlay on FUNC+T.",
+            "maxLoad": "One instance. Worst authored event counted as every opcode in trackmutes.s once (438). Stock jsr bodies, cache and wait states are not included. Budget: 100 ms at 266 MHz (26 600 000), a key-press ceiling, not a measured limit.",
+            "inputConditions": "Independent of audio. Runs in the T / FUNC+T / QUICK MUTE / UI-tick hooks. Executed authored instructions, not chip cycles. Time on the unit is not measured."
+          },
+          "report": "TESTING.md"
+        }
+      ],
+      "memory": {
+        "regions": [
+          {
+            "name": "ColdFire code and data (one linked unit, static estimate)",
+            "space": "sdram",
+            "words": 1688,
+            "wordBits": 8,
+            "bytes": 1688,
+            "scope": "shared"
+          }
+        ],
+        "perInstanceBytes": 0,
+        "sharedBytes": 1688,
+        "maxInstances": 1,
+        "totalBytes": 1688,
+        "conditions": "Static instruction-length sum of trackmutes.s. m68k-elf-as was not on this Windows host, so this is not the native linker size. Detours and ANDY pokes occupy stock bytes. PERSONALIZE word 0x800000dc is stock SRAM, not extra module RAM. No DSP memory.",
+        "report": "TESTING.md"
+      },
+      "hardware": {
+        "kind": "functional",
+        "status": "reported",
+        "model": null,
+        "testedOn": "2026-10-25",
+        "tester": "jonathanwardle1992-beep",
+        "sourceRevision": "7f5cb5cbde61162319e7a7881b692f523f5beba7",
+        "imageSha256": "80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624",
+        "summary": "Same-unit cards of 0.1.0–0.1.31 failed as listed in TESTING.md. Hardware LCD photos 25 Oct 2026 show SYSTEM STATUS TM 0.1.32 and TRACK MUTES empty then ticked. AED follow of FUNC+T is not in those photos.",
+        "limitations": [
+          "AED waveform follow after FUNC+T is still unverified on 0.1.32.",
+          "USB Keep/Undo, ot_emu, MIDI transport and an MKI panel are untested.",
+          "TRACK MUTES alone on a card build; Mute Modes, Play Start and Play Modes cannot share PERSONALIZE with it.",
+          "Cycle and memory figures are static authored bounds, not chip wall-clock or a linker report.",
+          "One tester, one unit."
+        ],
+        "report": "evidence/hardware.md"
+      },
+      "documentation": {
+        "tutorial": {
+          "title": "Quick tutorial",
+          "steps": [
+            "Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to TRACK MUTES.",
+            "Press YES so the box shows X. Cursor up/down must not change it. Close the menu.",
+            "Press T1, or several T keys together: those tracks mute or unmute. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track."
+          ]
+        },
+        "screenshots": [
+          "media/ot-system.png",
+          "media/ot-personalize-empty.png",
+          "media/ot-personalize-ticked.png"
+        ],
+        "screenshotStyle": "black-and-white"
+      }
+    }
   },
   "license": {
     "spdx": "MIT",
     "file": "LICENSE",
     "declaration": "Original module by jonathanwardle1992-beep, MIT. No firmware, extracted stock code or built images are included."
   },
-  "media": []
+  "media": [
+    {
+      "path": "media/ot-system.png",
+      "captureType": "hardware",
+      "caption": "Open PROJECT, then SYSTEM, then STATUS. OS VERSION shows the card stamp TM 0.1.32. PERSONALIZE is the next SYSTEM row for TRACK MUTES.",
+      "alt": "SYSTEM STATUS on the Octatrack LCD; OS VERSION reads TM 0.1.32.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "SYSTEM STATUS",
+        "shows": "location",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.32-experimental",
+        "imageSha256": "57010061e67d6c87ce55bf7acd97e1f9c997f5d0faa704d73cb1a0cb86a28ff5",
+        "setup": "Hardware photograph of the LCD, 25 October 2026. Rotated upright, cropped to the glass, two greys, 768x384 nearest neighbour. Stamp TM 0.1.32. MAIN SHA-256 is this field."
+      }
+    },
+    {
+      "path": "media/ot-personalize-empty.png",
+      "captureType": "hardware",
+      "caption": "Open PERSONALIZE and scroll to TRACK MUTES. The empty box is stock: T1-T8 select, FUNC+T mutes. Only YES ticks the box; cursor keys must not change it.",
+      "alt": "PERSONAL SETTINGS with TRACK MUTES highlighted and the checkbox empty.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "PERSONALIZE",
+        "shows": "location-and-controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.32-experimental",
+        "imageSha256": "57010061e67d6c87ce55bf7acd97e1f9c997f5d0faa704d73cb1a0cb86a28ff5",
+        "setup": "Same hardware session as ot-system.png. TRACK MUTES selected, empty box."
+      }
+    },
+    {
+      "path": "media/ot-personalize-ticked.png",
+      "captureType": "hardware",
+      "caption": "Press YES so TRACK MUTES shows X. Close the menu. T1-T8 now mute; FUNC+T selects the track for editing; FUNC+double-tap T opens the sample list on an audio track.",
+      "alt": "PERSONAL SETTINGS with TRACK MUTES highlighted and the checkbox showing X.",
+      "credit": "jonathanwardle1992-beep (hardware LCD photograph, 25 October 2026)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "PERSONALIZE",
+        "shows": "location-and-controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.1.32-experimental",
+        "imageSha256": "57010061e67d6c87ce55bf7acd97e1f9c997f5d0faa704d73cb1a0cb86a28ff5",
+        "setup": "Same hardware session as ot-system.png. TRACK MUTES selected, ticked."
+      }
+    }
+  ]
 }

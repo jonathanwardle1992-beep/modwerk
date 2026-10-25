@@ -3,7 +3,8 @@
     "version": "0.1.32-experimental",
     "date": "2026-10-25",
     "changes": [
-      "Do not treat 0.1.31-experimental as a pass. Same-unit: AED still does not follow FUNC+T1-T8. 0.1.31 jsr'd 0x40078850(1) and 0x4002f2f8 without copying the track's sample record. 0.1.32 jsr's stock 0x4006de34 with that record, refreshes the current page (0x400554e0 / 0x4004d640) and then redraws AED. USB Keep/Undo and ot_emu untested."
+      "Do not treat 0.1.31-experimental as a pass. Same-unit: AED still does not follow FUNC+T1-T8. 0.1.31 jsr'd 0x40078850(1) and 0x4002f2f8 without copying the track's sample record. 0.1.32 jsr's stock 0x4006de34 with that record, refreshes the current page (0x400554e0 / 0x4004d640) and then redraws AED. USB Keep/Undo and ot_emu untested.",
+      "Documentation (same version): qualification record, static ColdFire size/cycle estimate, and hardware LCD photographs of SYSTEM STATUS TM 0.1.32 plus PERSONALIZE TRACK MUTES empty and ticked. AED follow of FUNC+T is still unverified."
     ]
   },
   {

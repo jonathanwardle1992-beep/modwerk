@@ -22,11 +22,11 @@ No knob. In PERSONALIZE this is a stock checkbox: **only [YES] ticks or unticks*
 
 ## Usage
 
-### Quick tutorial: mute from the track buttons
+### Quick tutorial
 
 1. Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to TRACK MUTES.
-2. Press YES so the box shows X. Close the menu.
-3. Press T1: track 1 mutes or unmutes. Press T1-T8 together: each pressed track mutes or unmutes. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track.
+2. Press YES so the box shows X. Cursor up/down must not change it. Close the menu.
+3. Press T1, or several T keys together: those tracks mute or unmute. Hold FUNC and press T3: track 3 is selected for editing. Hold FUNC and double-tap T3: browse and assign a sample on an audio track.
 
 To restore stock T=select / FUNC+T=mute, clear the box, or leave the module out of the build.
 
@@ -47,7 +47,7 @@ To restore stock T=select / FUNC+T=mute, clear the box, or leave the module out 
 
 ## Tests and measurements
 
-See [TESTING.md](TESTING.md). No hardware pass yet.
+See [TESTING.md](TESTING.md) and [evidence/hardware.md](evidence/hardware.md). Same-unit cards of `0.1.0`–`0.1.31` failed as listed there. `0.1.32` is packed (ELEK `TM 0.1.32`) and has not been flashed. Static ColdFire size/cycle bounds are in TESTING; they are not chip wall-clock.
 
 ## Authorship and licences
 
@@ -55,4 +55,10 @@ jonathanwardle1992-beep: behaviour, ColdFire source, PERSONALIZE row and documen
 
 ## Screens and audio
 
-Captures of PROJECT > SYSTEM > PERSONALIZE > TRACK MUTES are not made yet. They must be real black-and-white LCD pixels (emulator framebuffer or hardware). The module makes no sound of its own.
+Hardware LCD photographs, 25 October 2026. SYSTEM STATUS shows the card stamp TM 0.1.32; PERSONALIZE is where TRACK MUTES is ticked. The module makes no sound of its own.
+
+![PROJECT > SYSTEM](media/ot-system.png)
+
+![PERSONALIZE, TRACK MUTES empty](media/ot-personalize-empty.png)
+
+![PERSONALIZE, TRACK MUTES ticked](media/ot-personalize-ticked.png)
