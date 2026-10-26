@@ -44,7 +44,7 @@ import os
 
 from remix.schema import Category, Detour, Gate, Kind, Linked, Module, Poke, Proof, TableGrow
 
-_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__))).replace("\\", "/")
+_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__)))
 H = bytes.fromhex
 
 LABELS, GETTERS, SETTERS = 0x400b2a34, 0x400b2a74, 0x400b2ac0
@@ -67,7 +67,7 @@ MODULE = Module(
     proof_note="0.1.31 same-unit: AED still does not follow FUNC+T. 0.1.32 copies the track sample record then redraws AED. USB Keep/Undo and ot_emu untested.",
     doc="PERSONALIZE -> TRACK MUTES checkbox: empty keeps stock T=select / FUNC+T=mute; ticked makes T mute and FUNC+T select.",
     linked=(
-        Linked("trackmutes", f"{_HERE}/trackmutes.s"),
+        Linked("trackmutes", os.path.join(_HERE, "trackmutes.s")),
     ),
     detours=(
         Detour(
@@ -128,5 +128,5 @@ MODULE = Module(
              "ANDY restore pea 0x64 -> 0x70: TRACK MUTES (0x800000dc) survives power-off")
         for site in ANDY_RESTORE_SITES
     ),
-    gates=(Gate(f"{_HERE}/verify.py", remix_arg=False),),
+    gates=(Gate("modules/track-mutes/verify.py", remix_arg=False),),
 )

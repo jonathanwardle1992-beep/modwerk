@@ -22,6 +22,8 @@ No knob. In PERSONALIZE this is a stock checkbox: **only [YES] ticks or unticks*
 
 ## Usage
 
+Tick TRACK MUTES in PERSONALIZE when you want T1-T8 to mute and FUNC+T to select. Leave the box empty for stock T=select / FUNC+T=mute. The setting is global, not a Part or project field.
+
 ### Quick tutorial
 
 1. Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to TRACK MUTES.
@@ -41,7 +43,7 @@ To restore stock T=select / FUNC+T=mute, clear the box, or leave the module out 
 ## Compatibility and limitations
 
 - OS 1.40C. Hardware: `0.1.31` AED still does not follow FUNC+T. `0.1.32` copies the track sample record then redraws AED.
-- **Conflicts with Mute Modes** (`mute-modes`), **Play Start** (`play-start`) **and Play Modes** (`playmodes`): PERSONALIZE tables / ANDY restore, and Play Modes also owns the TRACK key handler. The configurator will not offer them together until a base-owned PERSONALIZE table exists (that would be a separate owner-reviewed change, not this module).
+- **Conflicts with Mute Modes** (`mute-modes`) **and Play Modes** (`playmodes`): PERSONALIZE tables / ANDY restore, and Play Modes also owns the TRACK key handler. Play Start occupies the same PERSONALIZE site but is still a draft, so it is named here until that module is listed. The configurator will not offer the listed pair together until a base-owned PERSONALIZE table exists (that would be a separate owner-reviewed change, not this module).
 - CUE+T is not taken. Audio-page mutes and MIDI-page mutes are independent. Not tested: MKI panel, USB Keep/Undo, `ot_emu`.
 - An OS upgrade resets PERSONALIZE, including this row.
 
