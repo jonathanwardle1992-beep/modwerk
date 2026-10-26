@@ -70,13 +70,7 @@ A private card image of `0.1.30-experimental` (ELEK `TM 0.1.30`, SHA-256 `db1214
 
 A private card image of `0.1.31-experimental` (ELEK `TM 0.1.31`, SHA-256 `0afc74c3615cc42047d446de6ebc597769c227d5a15f312f11d6be625c2ec956`) was flashed on the same unit, 25 October 2026. Reported: AED still does not follow FUNC+T1-T8. Do not treat `0.1.31-experimental` as a pass.
 
-A private card image of `0.1.32-experimental` is prepared locally (ELEK `TM 0.1.32`, SHA-256 `80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624`). Firmware is not in git. Intended card checks:
-
-1. AED open: FUNC+T1-T8 shows that track's waveform, not the previous track's.
-2. SRC/AMP/LFO/FX1/FX2 still switch; T8 MASTER title does not stick over those pages.
-3. MIDI, T mute, QUICK MUTE, FUNC+double-tap T1-T7 sample list as on 0.1.26/0.1.30 intent.
-
-Do not treat `0.1.32-experimental` as a pass until those card results exist.
+A private card image of `0.1.32-experimental` (ELEK `TM 0.1.32`, SHA-256 `80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624`) was flashed on the same unit. Reported: with AED open, FUNC+T follows the selected track's waveform as desired. That is reported hardware from one tester on this card build, not a verified stress pass. USB Keep/Undo and `ot_emu` were not tested. Do not treat `0.1.32-experimental` as verified.
 
 ## Stock flows
 
@@ -92,7 +86,7 @@ Static estimate of the authored unit: 1688 bytes (instruction-length sum of `tra
 
 ## Hardware
 
-`0.1.0`–`0.1.31` same-unit, 24–25 October 2026, as above. Hardware LCD photographs 25 October 2026 show SYSTEM STATUS `TM 0.1.32` and TRACK MUTES empty then ticked. AED follow is not in those photos. See [evidence/hardware.md](evidence/hardware.md).
+`0.1.0`–`0.1.32` same-unit, 24–26 October 2026, as above. Hardware LCD photographs 25 October 2026 show SYSTEM STATUS `TM 0.1.32` and TRACK MUTES empty then ticked. AED follow of FUNC+T on this card is reported, not photographed, and not verified under stress. See [evidence/hardware.md](evidence/hardware.md).
 
 ## OT UI capture evidence
 

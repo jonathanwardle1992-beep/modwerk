@@ -66,7 +66,7 @@
       "key:FUNC+TRACK"
     ],
     "limitations": [
-      "OS 1.40C. 0.1.31 same-unit: AED still does not follow FUNC+T. 0.1.32 copies the track sample record then redraws AED. USB Keep/Undo and ot_emu untested.",
+      "OS 1.40C. 0.1.32 card: FUNC+T AED waveform follows the selected track (reported, one tester). Stress of that follow is not verified. USB Keep/Undo and ot_emu untested.",
       "Conflicts with Mute Modes and Play Modes: PERSONALIZE tables / ANDY length, and Play Modes also owns the TRACK key handler. Play Start is still a draft, so it is not named in conflicts until that module is listed.",
       "CUE+T is not taken. Audio-track mutes and MIDI-track mutes are separate pages, as on stock FUNC+T.",
       "An OS upgrade resets PERSONALIZE."
@@ -116,7 +116,7 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "0.1.0–0.1.31 same-unit cards failed as in TESTING.md. Hardware LCD photos 25 Oct 2026: SYSTEM STATUS TM 0.1.32; PERSONALIZE TRACK MUTES empty and ticked. AED follow of FUNC+T is still unverified.",
+    "summary": "0.1.0–0.1.31 same-unit cards failed as in TESTING.md. 0.1.32 card: FUNC+T AED waveform follows the selected track (reported, one tester). Stress of that follow is not verified. USB Keep/Undo and ot_emu untested. LCD photos 25 Oct 2026: SYSTEM STATUS TM 0.1.32; PERSONALIZE empty and ticked.",
     "hardwareStatus": "reported",
     "evidenceRevision": "7f5cb5cbde61162319e7a7881b692f523f5beba7",
     "gates": [
@@ -124,7 +124,7 @@
     ],
     "qualification": {
       "moduleVersion": "0.1.32-experimental",
-      "sourceSha256": "5b9bc965fcc7a91fd6b17a02a1ac9afa783178d07443e2ff195d398b43fb338a",
+      "sourceSha256": "d11f7b3846c03736bf380cce3c5f3c62b156d0bd190b4f2e6769947e97e22c74",
       "imageSha256": "80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624",
       "cycles": [
         {
@@ -171,9 +171,9 @@
         "tester": "jonathanwardle1992-beep",
         "sourceRevision": "7f5cb5cbde61162319e7a7881b692f523f5beba7",
         "imageSha256": "80ea9496ada52964401c3d0786dd7b21bbeb77e45a4e075faeaa473183adc624",
-        "summary": "Same-unit cards of 0.1.0–0.1.31 failed as listed in TESTING.md. Hardware LCD photos 25 Oct 2026 show SYSTEM STATUS TM 0.1.32 and TRACK MUTES empty then ticked. AED follow of FUNC+T is not in those photos.",
+        "summary": "Same-unit cards of 0.1.0–0.1.31 failed as listed in TESTING.md. 0.1.32 card: FUNC+T AED waveform follows the selected track (reported, one tester). Stress of that follow is not verified. LCD photos 25 Oct 2026 show SYSTEM STATUS TM 0.1.32 and TRACK MUTES empty then ticked; AED follow is not in those photos.",
         "limitations": [
-          "AED waveform follow after FUNC+T is still unverified on 0.1.32.",
+          "AED waveform follow after FUNC+T on 0.1.32 is reported hardware, one tester, card build; not verified and not stressed.",
           "USB Keep/Undo, ot_emu, MIDI transport and an MKI panel are untested.",
           "TRACK MUTES alone on a card build; Mute Modes, Play Start and Play Modes cannot share PERSONALIZE with it.",
           "Cycle and memory figures are static authored bounds, not chip wall-clock or a linker report.",

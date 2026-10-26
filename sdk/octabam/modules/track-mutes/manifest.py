@@ -44,7 +44,7 @@ import os
 
 from remix.schema import Category, Detour, Gate, Kind, Linked, Module, Poke, Proof, TableGrow
 
-_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__)))
+_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__))).replace("\\", "/")
 H = bytes.fromhex
 
 LABELS, GETTERS, SETTERS = 0x400b2a34, 0x400b2a74, 0x400b2ac0
@@ -64,10 +64,10 @@ MODULE = Module(
     author="jonathanwardle1992-beep",
     author_url="https://github.com/jonathanwardle1992-beep",
     proof=Proof.UNTESTED,
-    proof_note="0.1.31 same-unit: AED still does not follow FUNC+T. 0.1.32 copies the track sample record then redraws AED. USB Keep/Undo and ot_emu untested.",
+    proof_note="0.1.32 card: FUNC+T AED waveform follows the selected track (reported, one tester). Stress of that follow is not verified. USB Keep/Undo and ot_emu untested.",
     doc="PERSONALIZE -> TRACK MUTES checkbox: empty keeps stock T=select / FUNC+T=mute; ticked makes T mute and FUNC+T select.",
     linked=(
-        Linked("trackmutes", os.path.join(_HERE, "trackmutes.s")),
+        Linked("trackmutes", _HERE + "/trackmutes.s"),
     ),
     detours=(
         Detour(

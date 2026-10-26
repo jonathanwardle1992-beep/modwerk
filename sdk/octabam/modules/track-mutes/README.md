@@ -4,7 +4,7 @@ Version: `0.1.32-experimental` · author: [@jonathanwardle1992-beep](https://git
 
 A global panel setting: **T1-T8 mute and unmute (several at once); FUNC + a track button selects that track for editing.** Tick it in PERSONALIZE. Default **empty** is stock (T selects, FUNC+T mutes), so installing the module changes nothing until you enable it.
 
-**Experimental.** `0.1.31` same-unit: AED still does not follow FUNC+T select. USB Keep/Undo and `ot_emu` are untested.
+**Experimental.** `0.1.32` card: FUNC+T AED waveform follows the selected track (reported, one tester). Stress of that follow is not verified. USB Keep/Undo and `ot_emu` are untested.
 
 ## Overview
 
@@ -42,7 +42,7 @@ To restore stock T=select / FUNC+T=mute, clear the box, or leave the module out 
 
 ## Compatibility and limitations
 
-- OS 1.40C. Hardware: `0.1.31` AED still does not follow FUNC+T. `0.1.32` copies the track sample record then redraws AED.
+- OS 1.40C. Hardware: on the `0.1.32` card, FUNC+T AED follow is reported as desired (one tester). Not verified; USB Keep/Undo and `ot_emu` untested.
 - **Conflicts with Mute Modes** (`mute-modes`) **and Play Modes** (`playmodes`): PERSONALIZE tables / ANDY restore, and Play Modes also owns the TRACK key handler. Play Start occupies the same PERSONALIZE site but is still a draft, so it is named here until that module is listed. The configurator will not offer the listed pair together until a base-owned PERSONALIZE table exists (that would be a separate owner-reviewed change, not this module).
 - CUE+T is not taken. Audio-page mutes and MIDI-page mutes are independent. Not tested: MKI panel, USB Keep/Undo, `ot_emu`.
 - An OS upgrade resets PERSONALIZE, including this row.
