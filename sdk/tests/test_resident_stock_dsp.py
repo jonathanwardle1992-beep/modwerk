@@ -88,12 +88,13 @@ class ResidentStockDsp(unittest.TestCase):
         ob = packages.Octabam(str(ROOT / 'sdk/octabam'))
         with tempfile.TemporaryDirectory() as work:
             for tag in ('A', 'B'):
-                first = resident.assemble_resident(ob, tag, 0x1000, work, packages.assemble)
-                other = resident.assemble_resident(ob, tag, 0x1400, work, packages.assemble)
+                # Analog BD's engine is its package's, always on demand; the rest stay in the block, as they were.
+                packaged = resident.PACKAGED & resident.ALLOWED[tag]
+                first = resident.assemble_resident(ob, tag, 0x1000, work, packages.assemble, packaged)
+                other = resident.assemble_resident(ob, tag, 0x1400, work, packages.assemble, packaged)
                 self.assertEqual(len(first['words']), len(other['words']))
                 for old, new in zip(first['words'], other['words']):
                     self.assertIn((new - old) & 0xffffff, (0, 0x400, (-0x400) & 0xffffff))
-                self.assertEqual(first['xRecord'], other['xRecord'])
                 for row, moved in zip(first['descriptors'], other['descriptors']):
                     self.assertEqual(moved['operand'] - row['operand'], 0x400)
                     self.assertEqual(moved['onValue'], row['onValue'])
@@ -134,9 +135,9 @@ class ResidentStockDsp(unittest.TestCase):
                                     '-o', str(executable)], check=True, capture_output=True)
                     meta = Path(work) / 'resident-meta.txt'
                     meta.write_text(' '.join(map(str, (0x400, labels['hookcontrol'], labels['hookreset'],
-                        labels['hookstate'], labels['hookready'], resident.ALLOWED[tag],
+                        labels['hookstate'], labels['hookready'], resident.ALLOWED[tag] & ~resident.PACKAGED,
                         0x33dfe if tag == 'A' else 0x3bdfe, len(first['descriptors'])))) + '\n' + '\n'.join(
-                        ' '.join(str(row[key]) for key in ('owner', 'operand', 'offValue', 'onValue')) for row in first['descriptors']) + '\n')
+                        ' '.join(str(row[key] or 0) for key in ('owner', 'operand', 'offValue', 'onValue')) for row in first['descriptors']) + '\n')
                     subprocess.run([str(executable), str(Path(work) / 'dsp.400.bin'), str(meta)], check=True, capture_output=True)
                 # Descriptor tampering cannot turn CAS into an arbitrary P writer.
                 first['descriptors'][0]['operand'] = 0

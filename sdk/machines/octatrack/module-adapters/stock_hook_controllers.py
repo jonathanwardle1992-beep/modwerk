@@ -19,6 +19,13 @@ import sys
 
 import cave_runtime
 _ROOT = Path(__file__).resolve().parents[4]
+
+
+def controller_sha256(data):
+    """What a trust row pins: the package without its DSP part (sdk/runtime/loader/abi9.py, as the loader computes it)."""
+    spec = importlib.util.spec_from_file_location('trust_abi9', _ROOT / 'sdk/runtime/loader/abi9.py')
+    abi9 = importlib.util.module_from_spec(spec); spec.loader.exec_module(abi9)
+    return abi9.controller_sha256(data)
 _spec = importlib.util.spec_from_file_location('stock_hook_private_paths', _ROOT / 'scripts/runtime_private_paths.py')
 _private = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_private)
 
@@ -617,7 +624,8 @@ def encode(name, sdk, builder, work, base_symbols, upstream, cross='m68k-elf-', 
     policy = dict(schema=1, module=name, feature=UNITS[name][1], revisions=list(REVISIONS),
                   sourceHashes={relative: sha(text.encode()) for relative, text in texts.items()},
                   adaptedSourceSha256=sha(source.read_bytes()), entries=entries)
-    return dict(package=data, packageSha256=sha(data), moduleId=builder.module_id(name), imageBytes=len(low),
+    return dict(package=data, packageSha256=sha(data), controllerSha256=controller_sha256(data),
+                moduleId=builder.module_id(name), imageBytes=len(low),
                 bss=bss, sites=len(sites), copies=len(copies), entries=entries, imports=imports, hooks=hooks,
                 sourcePolicySha256=sha(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode()),
                 policy=policy)
@@ -632,7 +640,7 @@ def policy_rows(name, encoded, entries=None):
     feature = UNITS[name][1]
     if not entries or len(set(entries)) != len(entries) or set(entries) - set(encoded['entries']):
         raise ValueError('Trust rows name only the derivative\'s own leased entries.')
-    return [dict(module=name, moduleId=encoded['moduleId'], packageSha256=encoded['packageSha256'],
+    return [dict(module=name, moduleId=encoded['moduleId'], controllerSha256=encoded['controllerSha256'],
                  sourcePolicySha256=encoded['sourcePolicySha256'], revisions=list(REVISIONS),
                  feature=feature, requiredCores=REQUIRED_CORES[feature], version=1,
                  imageBytes=encoded['imageBytes'], entryName=entry, **encoded['entries'][entry])
@@ -645,7 +653,7 @@ def policies_c(rows):
         raise ValueError('Controller trust rows exceed the fixed capacity.')
     seen, text = set(), ''
     for row in rows:
-        digest, policy = bytes.fromhex(row['packageSha256']), bytes.fromhex(row['sourcePolicySha256'])
+        digest, policy = bytes.fromhex(row['controllerSha256']), bytes.fromhex(row['sourcePolicySha256'])
         key = (digest, row['entry'])
         if (len(digest) != 32 or len(policy) != 32 or not any(digest) or not any(policy) or key in seen or
                 row['feature'] not in REQUIRED_CORES or row['requiredCores'] != REQUIRED_CORES[row['feature']] or

@@ -104,6 +104,13 @@ BOOT_RUN_COPY = '''        lea     __run_load, %a0         | where the RAM image
 1:      move.l  (%a0)+, (%a1)+
         subq.l  #1, %d0
         bne.s   1b'''
+# core-ot.s once .run is unpacked and .bss cleared: flash.c's digest of the packed .run, which stock's start then
+# overwrites. d1 is the only register the C call may change that .boot does not save.
+BOOT_FLASH_SEAM = '        move.b  %d0, core_up'
+BOOT_FLASH_SNAPSHOT = BOOT_FLASH_SEAM + '''
+        move.l  %d1, -(%sp)
+        jsr     modwerk_flash_snapshot  | flash.c: the packed .run's digest, for the USB base update
+        move.l  (%sp)+, %d1'''
 
 
 def check_zero_state(elf, moved, layout, mapping, bootstrap):
@@ -147,6 +154,10 @@ FIELDS ={'build': 17, 'os': 17, 'modules': 4096, 'configuration': 65,
 BOOT_GATE = (0x40000412, '2e7c48000000')
 # The startup (boot_anim.s) replaces the logo loop's first instructions, `pea -1; clr.l -(%sp)`.
 BOOT_LOGO = (0x400559c6, '4878ffff42a7')
+# The frame guard (machine_registry.c): the frame interrupt's register save at its entry and its restore with rte
+# at its exit, which machine_registry.s replays around the guard's clock. Address, bytes, their SHA-256, shim.
+FRAME_SITES = ((0x4000aad0, 8, '5f02b18d204af6e4a0177ad6e41c779a698018b6f25b5d83850926c8a9d44fa2', 'mw_frame_entry'),
+               (0x4000d9a6, 10, '60acbd38c2859ac73a63948d6c58796591fdbddd654799e50e88b0940be9a37a', 'mw_frame_leave'))
 OS_FIRST, OS_VEROFF, BOOT_IMAGE_BYTES = 0x4fefffe4, 0xde648, 0x140000  # boot.s, boot.h
 BOOT_RESERVE = (0x40a955e0, 0x41495de0)  # boot.s RESERVE_LO/HI: the gate scans only there
 # REMIX SWITCH's DSP park (dsp_park.asm, assembled by Octabam's dsp_asm), by
@@ -183,6 +194,11 @@ DYNLOAD_HOOKS = (
     # Modwerk's: main's idle spin counts the ColdFire's idle time (status.s, status.c). Its last init call only:
     # stock's spin stays, where ot_emu parks main again after a bench call.
     (0x4001fc96, 6, '2edb8c17ea73bf5ecd097ec929f3bfd6f8a74c81b11080d0d74efd55bec6b416', 'mw_idle'))
+# --dsp-loader: the knob routine of an audio track's main pages (0x40055008) names the default stepper 0x4003240c by
+# `lea 0x4003240c,%aN` for a live turn; the base repoints that operand at fxpage.s's mw_knob_step, which restages a
+# module page's turned knob before it (a select then steps as stock's do from the first visit). Address, the lea's
+# six stock bytes' SHA-256 and the stepper it names.
+KNOB_STEP = (0x40055140, 'c5e0994d9ad233a5e894f277b48d402278cd74bd878fab0e700f03946b8f2b9d', 0x4003240c)
 # The runtime builder's runtime.json reader and the Octatrack's events at base-owned sites (events.json).
 _spec = importlib.util.spec_from_file_location('modwerk_runtime_builder', APP / 'sdk/runtime/loader/build.py')
 RUNTIME_BUILDER = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(RUNTIME_BUILDER)
@@ -247,9 +263,14 @@ ICON = ('.....#...#...#.....',
 # own work without effects, measured on the owner's MKII on 11 October 2026 (scripts/octatrack-measure.py: core 0 ~959,
 # it mixes; core 1 ~514; one pattern playing). The 90% ceiling is the owner's choice.
 DSP_ALLOWANCE = (3120, 3565)
-# The dearest stock effect per slot, chip cycles: DJ EQUALIZER, 342 a sample on the same unit (its 331 executed
-# instructions in the emulator, stock_dsp_worst.py, run at about one a cycle). Every slot without a module is charged it.
-DSP_RESERVE = 342
+# Each stock effect's chip cycles a sample by effect id, the dearer core at its dearest of three settings, measured on the
+# same unit (docs/OCTATRACK_ELEKLOADER_MIGRATION.md's table; DELAY runs on the ColdFire; NONE and empty ids 0). A slot is
+# charged at least the dearest of these its bank's Parts name there (dsp.c; owner, 24 October 2026, beta finding 34).
+STOCK_CYCLES = {4: 285, 5: 80, 8: 0, 12: 193, 13: 342, 16: 242, 17: 147, 18: 295, 19: 128, 20: 249, 21: 299, 22: 257,
+                24: 102, 28: 311}  # FILTER SPATIALIZER DELAY EQUALIZER DJ-EQ PHASER FLANGER CHORUS COMB PLATE SPRING DARK COMP LO-FI
+# The dearest of them, DJ EQUALIZER (its 331 executed instructions in the emulator, stock_dsp_worst.py, run at about one a
+# cycle): what a machine's voice or engine still books each slot at, since a bank change may bring any stock effect.
+DSP_RESERVE = max(STOCK_CYCLES.values())
 # Effect ids the base handles (fxids.h MODWERK_FX_IDS; docs/OCTATRACK_MORE_EFFECT_IDS.md). 32 only to bisect.
 FX_IDS = 128
 VALIDATOR_CLAMPS = (0x400023b6, 0x400023bc, 0x400023de, 0x400023e4)  # the Part validator's moveq #31, FX1 then FX2
@@ -512,7 +533,19 @@ DSP_EDITS = {
     # The switch frame runs the outgoing effect's first sub-block, then the incoming one's init and its
     # second: no instance runs twice, so no overlap charge (it would refuse stock picks beside modules).
     # Each core's sum starts at its machines' source-stage charge (dsp.c), so FX slots are admitted beside it.
-    'allocator.c': (('#include "allocator.h"\n', '#include "allocator.h"\nuint32_t modwerk_dsp_source_charge(unsigned);\n'),
+    # Each slot is charged at least the dearest stock effect its bank's Parts name there (dsp.c's floors; owner, 24 October
+    # 2026): a Part switch or a RELOAD then needs no room it was not given, and a stock pick dearer than that is admitted.
+    'allocator.c': (('#include "allocator.h"\n', '#include "allocator.h"\nuint32_t modwerk_dsp_source_charge(unsigned);\n'
+                     '/* dsp.c\'s; harnesses without it charge each slot its own effect */\n'
+                     '__attribute__((weak)) unsigned modwerk_dsp_slot_floors(const uint8_t ids[16],uint32_t least[16])\n'
+                     '{ (void)ids; for(unsigned i=0;i<16;++i) least[i]=0; return 0; }\n'),
+                    ('    if(!token || token==a->token) return DL_ALLOC_STALE;\n',
+                     '    if(!token || token==a->token) return DL_ALLOC_STALE;\n'
+                     '    uint32_t least[16]; unsigned crowded=modwerk_dsp_slot_floors(ids,least); /* 1 + a core a raised floor overfills */\n'),
+                    ('        if(pkg->cycles>a->allowance[c]-steady[c]) return DL_ALLOC_CYCLES;\n        steady[c]+=pkg->cycles;\n    }\n',
+                     '        uint32_t cost=pkg->cycles>least[i] ? pkg->cycles : least[i];\n'
+                     '        if(cost>a->allowance[c]-steady[c]) return DL_ALLOC_CYCLES;\n        steady[c]+=cost;\n    }\n'
+                     '    if(crowded) return DL_ALLOC_CYCLES;\n'),
                     ('    uint32_t steady[2]={0,0},overlap[2]={0,0};',
                      '    uint32_t steady[2]={modwerk_dsp_source_charge(0),modwerk_dsp_source_charge(1)};\n'
                      '    if(steady[0]>a->allowance[0] || steady[1]>a->allowance[1]) return DL_ALLOC_CYCLES;'),
@@ -819,14 +852,16 @@ WIDTH_EDITS = {
 # slot runs and the request's keep set does not hold (a trim: nothing a track runs changes, so nothing is heard), and when
 # the running code itself blocks, the old code of the slots the request changes (an unload: those slots run the dry stub
 # until the request binds the new code and the setter applies it, a short gap where before the change was refused).
-# The request runs queued after it; each request gets at most one trim and one unload. Applied with WIDTH_EDITS, so the
-# host tests that rebuild the manager (sdk/tests) carry it.
+# The request runs queued after it; each request gets at most one trim and one unload. When that still leaves no one run
+# for the new code, the cores are packed (dsp.c's compaction, block by block while everything plays) with the request
+# held until that ends, then it runs once more (beta finding 35: EQUALIZER to FILTER at 98 %). Applied with
+# WIDTH_EDITS, so the host tests that rebuild the manager (sdk/tests) carry it.
 TRANSITION_EDITS = {
     'manager.c': (
         ('static void begin(const uint8_t *ids,uint32_t token,unsigned is_auto) {\n'
          '    bytes(desired,ids,16); current=token; automatic=is_auto;\n',
          'static unsigned trimming,queued_auto,trim_stage; /* Modwerk: a retirement before a queued request, that request\'s\n'
-         '                                                   * kind, and what it got (1 a trim, 2 an unload) */\n'
+         '                                                   * kind, and what it got (1 a trim, 2 an unload, 3 a pack) */\n'
          'static uint32_t trimmed_for;\n'
          'static fx_set trim_keep[2];\n'
          'volatile uint32_t dl_trims,dl_unloads; /* diagnostics */\n'
@@ -865,7 +900,19 @@ TRANSITION_EDITS = {
          '    if(unload) dl_unloads=dl_unloads+1; else dl_trims=dl_trims+1;\n'
          '    return 1;\n'
          '}\n'
-         'static void advance(void) {\n'),
+         '/* dsp.c packs the cores for the request in flight, which waits meanwhile; 0 when it cannot (weak 0 for harnesses). */\n'
+         '__attribute__((weak)) int modwerk_dsp_pack(void) { return 0; }\n'
+         '__attribute__((weak)) int modwerk_dsp_packing(void) { return 0; }\n'
+         'volatile uint32_t dl_packs; /* diagnostics */\n'
+         'void dl_residency_nudge(void);\n'
+         'static int pack_room(void) {\n'
+         '    if(!modwerk_dsp_pack()) return 0;\n'
+         '    bytes(queued_ids,desired,16); queued_token=current; queued_auto=automatic;\n'
+         '    trimmed_for=current; trim_stage=3u; phase=0; dl_packs=dl_packs+1;\n'
+         '    return 1;\n'
+         '}\n'
+         'static void advance(void) {\n'
+         '    if(!phase && queued_token && modwerk_dsp_packing()) return; /* the moves first (dl_move runs only when idle) */\n'),
         ('begin(queued_ids,t,0); }\n', 'begin(queued_ids,t,queued_auto); queued_auto=0; }\n'),
         ('        allocator.keep[0]=fx_or(allocator.keep[0],soft[0]); allocator.keep[1]=fx_or(allocator.keep[1],soft[1]);\n',
          '        allocator.keep[0]=fx_or(allocator.keep[0],soft[0]); allocator.keep[1]=fx_or(allocator.keep[1],soft[1]);\n'
@@ -877,8 +924,12 @@ TRANSITION_EDITS = {
         ('        if(r<0) {\n            report(r==DL_ALLOC_MEMORY || r==DL_ALLOC_TRANSITION ? DL_SELECT_MEMORY :',
          '        if(r==DL_ALLOC_TRANSITION && !trimming) {\n'
          '            unsigned stage=current==trimmed_for ? trim_stage : 0u; /* what this request already got */\n'
-         '            if((stage<1u && make_room(0)) || (stage<2u && make_room(1))) return;\n'
+         '            if((stage<1u && make_room(0)) || (stage<2u && make_room(1)) || (stage<3u && pack_room())) return;\n'
          '        }\n'
+         '        /* A pick refused after its slot\'s old code was unloaded: the slot ran the dry stub under the old effect\'s\n'
+         '         * name until the next change (owner\'s MKII, 24 October 2026); the observer loads it back now. Not for an\n'
+         '         * automatic request: the observer would ask for that same set again. */\n'
+         '        if(r<0 && !automatic && current==trimmed_for && trim_stage>=2u) dl_residency_nudge();\n'
          '        if(r<0) {\n            report(r==DL_ALLOC_MEMORY || r==DL_ALLOC_TRANSITION ? DL_SELECT_MEMORY :'),
         # A request a retirement put behind it is not the transaction in flight: its answer is WAIT, never the
         # retirement's own result word (which reads READY once that commits).
@@ -891,7 +942,11 @@ TRANSITION_EDITS = {
         ('void dl_selection_cancel(uint32_t token) {\n    if(token==queued_token) queued_token=0;\n',
          'void dl_residency_nudge(void);\n'
          'void dl_selection_cancel(uint32_t token) {\n'
-         '    if(token==queued_token) { queued_token=0; if(trim_stage==2u && trimmed_for==token) dl_residency_nudge(); }\n'),
+         '    if(token==queued_token) { queued_token=0; if(trim_stage>=2u && trimmed_for==token) dl_residency_nudge(); }\n'),
+        # A pick made while a retirement runs takes the waiting request's place as a manual one: it kept an automatic
+        # request's kind, and an automatic one commits before the stock setter publishes the pick.
+        ('    if(phase) { bytes(queued_ids,s->target,16); queued_token=token; return DL_SELECT_WAIT; }\n',
+         '    if(phase) { bytes(queued_ids,s->target,16); queued_token=token; queued_auto=0; return DL_SELECT_WAIT; }\n'),
         ('    reinit();\n    if(phase) return;\n', '    reinit();\n    if(phase || queued_token) return;\n'),
     ),
 }
@@ -1201,8 +1256,10 @@ def fill_table_owners(document, owners, stock_at):
     validated against its exact published package (table_declarations.validate) and the records go into the base's
     fixed table-owner storage before the image is built, so the base admits those packages and no other. Returns the
     storage bytes and the files read."""
-    spec = importlib.util.spec_from_file_location('base_table_declarations',
-                                                  APP / 'sdk/machines/octatrack/module-adapters/table_declarations.py')
+    adapters = str(APP / 'sdk/machines/octatrack/module-adapters')
+    if adapters not in sys.path:  # table_declarations imports machine_layout beside it
+        sys.path.insert(0, adapters)
+    spec = importlib.util.spec_from_file_location('base_table_declarations', adapters + '/table_declarations.py')
     declarations = importlib.util.module_from_spec(spec); spec.loader.exec_module(declarations)
     doc = json.loads(owners.read_text())
     if doc.get('schema') != 1 or not isinstance(doc.get('owners'), list) or not doc['owners']:
@@ -1445,6 +1502,8 @@ def main():
         parser.error('Private resident stock hooks require the ordinary DSP loader, without probes/burn.')
     if args.resident_on_demand and not args.resident_stock_hooks:
         parser.error('--resident-on-demand needs --resident-stock-hooks.')
+    if args.resident_stock_hooks and not args.resident_on_demand:
+        parser.error('--resident-stock-hooks needs --resident-on-demand: Analog BD\'s engine is its package\'s (ABI 10), placed on demand.')
     if bool(args.controller_policies) != bool(args.controller_layout) or (args.controller_policies and not args.resident_stock_hooks):
         parser.error('Controller trust rows need --resident-stock-hooks and the layout their packages were encoded against.')
     global FX_IDS, FX_WORDS
@@ -1494,6 +1553,9 @@ def main():
     if bootstrap.count(BOOT_RUN_COPY) != 1:
         raise ValueError('Pinned .run copy seam changed; review run_unpack.s before porting.')
     bootstrap = bootstrap.replace(BOOT_RUN_COPY, '        jsr     mw_run_unpack           | .run is stored packed (run_unpack.s)')
+    if bootstrap.count(BOOT_FLASH_SEAM) != 1:
+        raise ValueError('Pinned core_up seam changed; review flash.c\'s boot snapshot before porting.')
+    bootstrap = bootstrap.replace(BOOT_FLASH_SEAM, BOOT_FLASH_SNAPSHOT)
     (source / 'core-ot.s').write_text(bootstrap)
     for p in logger.iterdir():
         if p.suffix in ('.c', '.h') and p.name != 'identity.c':
@@ -1553,9 +1615,14 @@ def main():
             spec = importlib.util.spec_from_file_location('modwerk_usb_audio_profiles',
                 APP / 'sdk/machines/octatrack/module-adapters/usb-audio-profiles/profiles.py')
             usb_profiles = importlib.util.module_from_spec(spec); spec.loader.exec_module(usb_profiles)
-    for name in ('ep0.c', 'fxids.h', 'runtime.c', 'runtime.h', 'boot.c', 'boot.h', 'boot.s', 'flash.c', 'flash.h', 'modset.c', 'boot_anim.c', 'boot_anim.s', 'crash.c', 'crash.s', 'run_unpack.s') + (('dev.c',) if args.dev else ()) + (
-            ('runtime_events.h', 'runtime_events.s', 'machine_registry.c', 'machine_registry.s') if args.site_events else ()):
+    for name in ('ep0.c', 'fxids.h', 'runtime.c', 'runtime.h', 'boot.c', 'boot.h', 'boot.s', 'flash.c', 'flash.h', 'slots.c', 'slots.h', 'modset.c', 'boot_anim.c', 'boot_anim.s', 'crash.c', 'crash.s', 'run_unpack.s') + (('dev.c',) if args.dev else ()) + (
+            ('runtime_events.h', 'runtime_events.s', 'machine_registry.c', 'machine_registry.s', 'midi_generators.c',
+             'midi_generators.s') if args.site_events else ()):
         shutil.copyfile(HERE / name, source / name)
+    # The boot stub's sector, which flash.c writes when it converts a unit to two slots (build_stub.py: stub_body.c).
+    sys.path.insert(0, str(HERE))
+    import build_stub
+    build_stub.build(upstream, source, args.cross + 'gcc')
     if args.dev and args.resident_on_demand:  # dev MEM reaches the engines' diagnostics (resident_engines.dev)
         sys.path.insert(0, str(APP / 'sdk/machines/octatrack/module-adapters'))
         import resident_engines as dev_engines
@@ -1602,7 +1669,7 @@ def main():
                 edits += (('void dl_ui(void) {\n    dl_selection_tick();\n    dl_residency_tick();\n',
                            'void dl_ui(void) {\n    void modwerk_cost_stamp(unsigned);\n    modwerk_cost_stamp(4);\n    dl_selection_tick(); modwerk_cost_stamp(16);\n    dl_residency_tick(); modwerk_cost_stamp(17);\n'),
                           ('unsigned dl_frame(void) {\n',
-                           'extern volatile uint32_t modwerk_cost[24];\nstatic unsigned dl_frame_body(void);\n'
+                           'extern volatile uint32_t modwerk_cost[28];\nstatic unsigned dl_frame_body(void);\n'
                            'unsigned dl_frame(void) {\n    uint32_t t0=*(volatile uint32_t *)0xfc07c00cu; unsigned r=dl_frame_body();\n'
                            '    modwerk_cost[10]+=*(volatile uint32_t *)0xfc07c00cu-t0; ++modwerk_cost[11]; return r;\n}\n'
                            'static unsigned dl_frame_body(void) {\n'),)
@@ -1639,6 +1706,10 @@ def main():
                 if text.count(old) != 1:
                     raise ValueError('Octabam DSP loader refusal seam changed in %s; review the port.' % name)
                 text = text.replace(old, new)
+            if args.resident_on_demand and name == 'allocator.c':  # the key bus's price at a pick
+                text = resident_engines.allocator(text)
+            elif args.resident_on_demand and name == 'manager.c':  # ... and in the DSP FULL box
+                text = resident_engines.refusal(text)
             if args.resident_stock_hooks and name in zero_state.UNITS:  # last, after every other seam
                 text = zero_state.unit(name, text, preserved_dynload)
             (source / ('dsp_hooks.s' if name == 'hooks.s' else name)).write_text(text)
@@ -1700,6 +1771,11 @@ def main():
             for name in ('resident_engines.c', 'resident_engines.h'):
                 shutil.copyfile(resident_source.RUNTIME / name, source / name)
         chooser_sites, chooser_lists = loader_dsp.choosers(image, FX_IDS)
+        at, guard, stepper = KNOB_STEP
+        lea = image[at - device.main_load:at - device.main_load + 6]
+        if sha(lea) != guard or int.from_bytes(lea[:2], 'big') & 0xf1ff != 0x41f9 or int.from_bytes(lea[2:], 'big') != stepper:
+            raise ValueError('The knob routine\'s default-stepper lea at %#x is not the one KNOB_STEP names.' % at)
+        chooser_sites.append(dict(addr=hex(at + 2), stock=lea[2:].hex(), op='ptr', target='mw_knob_step'))
         # The Part validator (0x40002318; bank load, battery restore) clears an id that reads negative and clamps one
         # above 31 to 31: four `moveq #31` (docs/OCTATRACK_MORE_EFFECT_IDS.md). Past 32 ids they clamp to the last.
         for at in (VALIDATOR_CLAMPS if FX_IDS != 32 else ()):
@@ -1859,7 +1935,7 @@ def main():
         definitions += 'const struct fx_legacy modwerk_fx_legacy[] = {%s};\nconst uint32_t modwerk_fx_legacy_count = %d;\n' % (
             ', '.join('{%#xu, %d, %s}' % (int.from_bytes(hashlib.sha256(key.encode()).digest()[:4], 'big'), fx,
                                            ctext(names.get(key, key)[:15])) for fx, key in legacy), len(legacy))
-        stock_catalog = loader_dsp.catalog_c(dsp_layout, DSP_RESERVE, FX_IDS)
+        stock_catalog = loader_dsp.catalog_c(dsp_layout, STOCK_CYCLES, FX_IDS)
         stock_packed_aliases, stock_packed_deltas = {}, {}
         if args.resident_stock_hooks:
             stock_catalog, stock_packed_aliases, stock_packed_deltas = share_sparse_stock_catalog(stock_catalog, dsp_layout)
@@ -1939,11 +2015,16 @@ modwerk_retained_end:
         recipe['cflags'].append('-DMODWERK_RESIDENT_ON_DEMAND')
     if args.site_events:  # the base owns these stock sites; packages subscribe (sdk/machines/octatrack/EVENTS.md)
         recipe['cflags'].append('-DMODWERK_RUNTIME_EVENTS')
-        recipe['sources'] += ['runtime_events.s', 'machine_registry.s']
+        recipe['sources'] += ['runtime_events.s', 'machine_registry.s', 'midi_generators.s']
         for addr, n, guard, label in EVENTS.base_sites():
             stock = image[addr - device.main_load:addr - device.main_load + n]
             if sha(stock) != guard:
                 raise ValueError('Stock bytes at %#x are not the ones events.json names.' % addr)
+            recipe['sites'].append(dict(addr=hex(addr), stock=stock.hex(), op='jmp', target=label))
+        for addr, n, guard, label in FRAME_SITES:
+            stock = image[addr - device.main_load:addr - device.main_load + n]
+            if sha(stock) != guard:
+                raise ValueError('The frame interrupt at %#x is not stock; review the frame guard.' % addr)
             recipe['sites'].append(dict(addr=hex(addr), stock=stock.hex(), op='jmp', target=label))
         # The tables' sites: the machine registry's and the SEQUENCER rows' (machine_registry.c/.s). 'own' sites keep
         # their stock bytes; the registry rewrites their immediates while the table changes.

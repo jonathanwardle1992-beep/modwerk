@@ -9,15 +9,18 @@ The caller must retain controller ownership until both required core ACKs and
 must initialize the declared state before activating a dormant engine.
 No stock words, assembled images or coefficient records are saved by this file.
 """
-from contextlib import contextmanager
 import hashlib
-import importlib.util
+import json
 from pathlib import Path
 import re
 import sys
 
 SIDECHAIN, MATRIX, ANALOG_BD, KEYBUS = 1, 2, 4, 8
 FEATURES = (SIDECHAIN, MATRIX, ANALOG_BD, KEYBUS)
+# Features whose engine and initial words are their controller's package's (ABI 10, dsp-sites.json "packaged"): the
+# base keeps only their stubs, base words and regions, so their DSP changes ship as packages. Always on demand.
+PACKAGED = ANALOG_BD
+SITES = Path(__file__).resolve().parents[1] / 'dsp-sites.json'
 NAMES = {SIDECHAIN: 'sidechain', MATRIX: 'matrix', ANALOG_BD: 'analog-bd', KEYBUS: 'keybus'}
 ENGINE_ORIGINS = (0x100000, 0x200000)  # long forms only: every relocated word is a whole address or displacement
 ENGINE_PROOFS = (0x1000, 0x1333, 0x17ff, 0x1c01)
@@ -28,15 +31,6 @@ SOURCES = {
     'modules/sidechain-compressor/upstream/tools/sc_tables.py': '8045e06f97fa462ca3f986b5a46e8ee48f9f9663691ae291221ce8ed6489c71a',
     'modules/output-matrix/manifest.py': '65d1ae009dc1c956ce2036181667434e31b361179ca138e5c8f1091227b55619',
     'modules/output-matrix/matrix_mix.asm': '8f58596d8bd23bf50651d4288745c187ace9e6f9e0efffd34dcdad627b89476e',
-    'tools/build/ab_image.py': 'c4573d4e0715961f7081dc1d5a0639d42ac63313ccc9e50a0737ac0685e2fc14',
-    'tools/build/ab_records.py': '71f44c4c54b281b5c813ffbab3abb98501620ad980582367004a1daeb2eeca45',
-    'modules/analog-bassdrum/manifest.py': '20fa1f744630354b3986a3ad82ac6a41744345796dc783891a4c9f0bd81c787e',
-    'modules/analog-bassdrum/ab_glue.asm': 'c78dc31dfcfc7a0c6f10ae24b39744a88bed5211346bcae4f6931e2e6489223c',
-    'modules/analog-bassdrum/dsp909.py': 'd31d2fd1340e9c5055389a37f20959ebccd78d45636daec824ae3e1e84f4d67d',
-    'modules/analog-bassdrum/dsp808.py': '3d61ba9c258c319d90d7beb47f6cbc7dafb7336c49d8386912478d284cef603d',
-    'modules/analog-bassdrum/bd909.asm': '9c86c3bd06e95a998fbe4e0db5a05b9ff65e988686c81f98f6d6c9f4c3b8ee2f',
-    'modules/analog-bassdrum/bd808.asm': 'e7306bd284e9bca067cffc54dcbfb18ae7a0fc7b3a27253a246e58898ae9ee92',
-    'modules/analog-bassdrum/fit909.json': '6917d613b5033069f226b9f6a440f6eefd935e596452546d5bc27b73c5e3dd08',
 }
 
 
@@ -239,32 +233,6 @@ def verify_sources(sdk):
     return dict(SOURCES)
 
 
-@contextmanager
-def analog_sources(sdk):
-    """Load exact authored generators without writing their SDK/out directory."""
-    paths = {'dsp909': 'modules/analog-bassdrum/dsp909.py',
-             'dsp808': 'modules/analog-bassdrum/dsp808.py',
-             'ab_records': 'tools/build/ab_records.py',
-             'ab_image': 'tools/build/ab_image.py'}
-    old_path, previous = list(sys.path), {name: sys.modules.get(name) for name in paths}
-    loaded = {}
-    try:
-        for name, path in paths.items():
-            spec = importlib.util.spec_from_file_location(name, Path(sdk) / path)
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[name] = module
-            spec.loader.exec_module(module)
-            loaded[name] = module
-        yield loaded
-    finally:
-        sys.path[:] = old_path
-        for name, module in previous.items():
-            if module is None:
-                sys.modules.pop(name, None)
-            else:
-                sys.modules[name] = module
-
-
 def resource_ranges(tag):
     if tag not in ALLOWED:
         raise ValueError('Unknown DSP core')
@@ -350,22 +318,9 @@ def assemble_authored(text, origin, work, assemble):
     return words, other
 
 
-def _analog(root, tag):
-    """Analog BD's authored engine text and its boot X record (fixed X tables, kept resident)."""
-    with analog_sources(root) as loaded:
-        ab, nine, eight = (loaded[name] for name in ('ab_image', 'dsp909', 'dsp808'))
-        layout, voices = ab.layout()
-        glue = ab.GLUE.read_text().replace('@VBASE@', '$%x' % voices).replace('@V808@', '$%x' % ab.VOICES808)
-        glue = glue.replace('@CONT@', '$%x' % ab.PAY[tag]['cont'])
-        analog = glue + '\n' + nine.source(layout, shared_desk=True, include_desk=False) + '\n' + \
-            eight.source(eight.layout(ab.TABLES808), layout, shared_desk=True) + '\n' + nine.shared_desk_source(layout)
-        xrecord = dict(space='x', address=ab.TABLES, words=ab.x_image(layout, voices))
-    return analog, xrecord
-
-
-def _engines(ob, tag, table_origin, features, analog):
+def _engines(ob, tag, table_origin, features):
     """(P table, texts) of `features` in the permanent order; their tables start at table_origin. The key bus tap
-    comes first and Sidechain's detector after it, the order of Sidechain's own text."""
+    comes first and Sidechain's detector after it, the order of Sidechain's own text. A packaged feature has none."""
     table, texts = [], []
     if features & (SIDECHAIN | KEYBUS):
         sc_table, sc = _section(ob, 'sidechain-compressor', tag, table_origin)
@@ -380,8 +335,6 @@ def _engines(ob, tag, table_origin, features, analog):
         matrix_table, matrix = _section(ob, 'output-matrix', tag, table_origin + len(table))
         table += matrix_table
         texts.append(matrix)
-    if features & ANALOG_BD:
-        texts.append(analog)
     return table, texts
 
 
@@ -389,7 +342,7 @@ def assemble_resident(ob, tag, origin, work, assemble, on_demand=0):
     """Return private words plus fixed descriptors, stock hook guards and X/Y ledger.
 
     `assemble(text, origin, work)` is the native assembler API in dsp_packages.py.
-    The result's `words` and `xRecord` are private build inputs, never catalogue
+    The result's `words` are private build inputs, never catalogue
     assets. Every stub starts dormant; enabling requires receiver CAS and ACKs.
     `on_demand` (a feature mask, 0 by default: today's bytes) leaves those
     features' engines out of the permanent block: each becomes a relocatable
@@ -401,9 +354,10 @@ def assemble_resident(ob, tag, origin, work, assemble, on_demand=0):
         raise ValueError('Resident code requires an actual private P origin')
     if not isinstance(on_demand, int) or on_demand & ~ALLOWED[tag]:
         raise ValueError('An on-demand engine this core does not carry')
+    if on_demand & PACKAGED & ALLOWED[tag] != PACKAGED & ALLOWED[tag]:
+        raise ValueError('A packaged engine is its package\'s: build the resident hooks on demand')
     sources = verify_sources(ob.root)
-    analog, xrecord = _analog(ob.root, tag)
-    table, texts = _engines(ob, tag, origin, ALLOWED[tag] & ~on_demand, analog)
+    table, texts = _engines(ob, tag, origin, ALLOWED[tag] & ~on_demand)
     entries = [('hsc_tap', 'sctap', KEYBUS, 'move x:>$208,r6\nrts'),
                ('hsc_det', 'scdet', SIDECHAIN, 'move r0,n6\nmove #$61,r4\nrts'),
                ('hsc_commit', 'moncommit', SIDECHAIN, 'move x:>$206,r0\nrts')]
@@ -423,20 +377,21 @@ def assemble_resident(ob, tag, origin, work, assemble, on_demand=0):
     words = table + words
     if origin + len(words) > 0x2000:
         raise ValueError('Resident hook code exceeds private P')
-    engines = {feature: engine_unit(ob, tag, feature, work, assemble, analog)
-               for feature in FEATURES if on_demand & feature}
+    engines = {feature: engine_unit(ob, tag, feature, work, assemble)
+               for feature in FEATURES if on_demand & feature & ~PACKAGED}
     descriptors = []
     for stub, on, owner, _ in entries:
         start = labels[stub] - origin
         if words[start + 1] != labels[stub + '_off'] - labels[stub]:
             raise ValueError('A dormant branch does not have a complete displacement operand')
         if owner & on_demand:
-            unit = engines[owner]
-            if on not in unit['entries'] or labels['hwbase%d' % owner] - origin >= len(words):
+            # A packaged engine is entered at its first word (the board checks its package's hook entry).
+            at = 0 if owner & PACKAGED else engines[owner]['entries'].get(on)
+            if at is None or labels['hwbase%d' % owner] - origin >= len(words):
                 raise ValueError('An on-demand engine lost its entry or base word')
             descriptors.append(dict(owner=owner, operand=labels[stub] + 1, off=labels[stub + '_off'], on=None,
                                     entry=labels[stub], base=labels['hwbase%d' % owner],
-                                    onOffset=unit['entries'][on], offValue=(labels[stub + '_off'] - labels[stub]) & 0xffffff,
+                                    onOffset=at, offValue=(labels[stub + '_off'] - labels[stub]) & 0xffffff,
                                     onValue=None))
             continue
         descriptors.append(dict(owner=owner, operand=labels[stub] + 1,
@@ -452,13 +407,15 @@ def assemble_resident(ob, tag, origin, work, assemble, on_demand=0):
                     'omx_mix': 'hom_mix', 'omx_phn': 'hom_phn'}[hook.label]
             guards.append(dict(module=name, site=hook.site_on(tag), expectedSha256=hook.stock.sha256,
                                entry=labels[stub], relocated=hook.label == 'scdet'))
-    guards.append(dict(module='analog-bassdrum', site={'A': 0x39c, 'B': 0x1a2}[tag],
-                       expectedSha256=hashlib.sha256(b''.join(w.to_bytes(3, 'big') for w in
-                           words[labels['hab_source_off'] - origin:labels['hab_source_off'] - origin + 2])).hexdigest(),
+    # Analog BD's seam: the catalogue's site (dsp-sites.json), whose guard is the displaced instruction the stub replays.
+    site = next(s for s in json.loads(SITES.read_text())['sites'] if s['feature'] == ANALOG_BD)
+    at = labels['hab_source_off'] - origin
+    if hashlib.sha256(b''.join(w.to_bytes(3, 'big') for w in words[at:at + 2])).hexdigest() != site['guardSha256']:
+        raise ValueError('Analog BD\'s dormant replay differs from its catalogued guard')
+    guards.append(dict(module='analog-bassdrum', site=int(site[tag], 16), expectedSha256=site['guardSha256'],
                        entry=labels['hab_source'], relocated=False))
     result = dict(tag=tag, origin=origin, words=words, labels=labels, descriptors=descriptors,
-                  allowed=ALLOWED[tag], guards=guards, resources=resource_ranges(tag),
-                  xRecord=xrecord, sources=sources)
+                  allowed=ALLOWED[tag], guards=guards, resources=resource_ranges(tag), sources=sources)
     if on_demand:
         result.update(onDemand=on_demand, engines=engines)
     return result
@@ -475,10 +432,10 @@ def place_resident(ob, tag, end, work, assemble, on_demand=0):
     return result
 
 
-ENTRIES = {SIDECHAIN: ('scdet', 'moncommit'), MATRIX: ('omx_mix', 'omx_phn'), ANALOG_BD: ('zg01',), KEYBUS: ('sctap',)}
+ENTRIES = {SIDECHAIN: ('scdet', 'moncommit'), MATRIX: ('omx_mix', 'omx_phn'), KEYBUS: ('sctap',)}
 
 
-def engine_unit(ob, tag, feature, work, assemble, analog=None):
+def engine_unit(ob, tag, feature, work, assemble):
     """One on-demand engine as a relocatable unit: its P table first, then its code.
 
     Assembled at two high origins, where dsp_asm has only long forms: a word that
@@ -488,13 +445,11 @@ def engine_unit(ob, tag, feature, work, assemble, analog=None):
     four arena bases must equal the relocated words (`proofs`). Authored module
     code only, a private build input like the permanent block.
     """
-    if tag not in ALLOWED or feature not in FEATURES or not feature & ALLOWED[tag]:
+    if tag not in ALLOWED or feature not in FEATURES or not feature & ALLOWED[tag] or feature & PACKAGED:
         raise ValueError('An on-demand engine this core does not carry')
-    if analog is None:
-        analog, _ = _analog(ob.root, tag)
 
     def build(org):
-        table, texts = _engines(ob, tag, org, feature, analog)
+        table, texts = _engines(ob, tag, org, feature)
         words, labels = assemble_authored('\n'.join(texts), org + len(table), work, assemble)
         return table + words, labels
 
@@ -567,8 +522,8 @@ def initialization_records(bundle):
     """
     if bundle['resources'] != resource_ranges(bundle['tag']):
         raise ValueError('Resident reset resources changed')
-    return [bundle['xRecord']] + [dict(space='y', address=r['address'], words=[0] * r['words'])
-                                for r in boot_ranges(bundle['tag']) if r['space'] == 'y']
+    return [dict(space='y', address=r['address'], words=[0] * r['words'])
+            for r in boot_ranges(bundle['tag']) if r['space'] == 'y']
 
 
 def receiver_control(bundle):
@@ -585,7 +540,7 @@ def receiver_control(bundle):
     if not isinstance(on_demand, int) or on_demand & ~ALLOWED[tag] or bool(on_demand) != ('engines' in bundle):
         raise ValueError('Resident on-demand layout changed')
     end = bundle['origin'] + len(bundle['words'])
-    # Word 7 (0 for every CAS the board sends) selects PLACE (1) on an on-demand build.
+    # Word 7 (0 for every CAS the board sends) selects PLACE (the engine's words, 1..$1fff) on an on-demand build.
     lines = ['move x:(r0+7),a', 'tst a', 'bne hplace'] if on_demand else []
     lines += ['move x:(r0+4),x0', 'move #>hookstate,r1', 'move p:(r1),a',
               'cmp x0,a', 'bne badsaved', 'move x:(r0+5),x1', 'move x1,a',
@@ -617,8 +572,9 @@ def receiver_control(bundle):
         if row['offValue'] != (row['off'] - row['entry']) & 0xffffff or (not placed and row['onValue'] != (row['on'] - row['entry']) & 0xffffff):
             raise ValueError('A resident branch has an invalid displacement')
         if placed:
-            unit = bundle['engines'][row['owner']]
-            if row['on'] is not None or row['onValue'] is not None or row['onOffset'] not in unit['entries'].values() or \
+            # A packaged engine is entered at its first word; the build's at one of its unit's entries.
+            entries = (0,) if row['owner'] & PACKAGED else bundle['engines'][row['owner']]['entries'].values()
+            if row['on'] is not None or row['onValue'] is not None or row['onOffset'] not in entries or \
                     row['base'] != _base_word(bundle, row['owner'], end):
                 raise ValueError('An on-demand branch has an invalid engine entry')
             # The placed engine's entry, from the base word the receiver itself wrote at PLACE.
@@ -643,27 +599,26 @@ def _base_word(bundle, feature, end):
 
 
 def receiver_place(bundle, end):
-    """PLACE (op 10, word7 1): word4 one on-demand feature, word5 its table offset, 0 to unplace.
+    """PLACE (op 10, word7 the engine's words, 1..$1fff): word4 one on-demand feature, word5 its table offset, 0 to unplace.
 
     Only while that feature is dormant on this core. A placement must lie whole
     inside the arena (64 saved words up to the permanent block) and needs a
     prior unplace; its base word becomes dltable + offset. The base already
     wrote and read back every engine word (WRITE); a CAS enables only a placed
-    feature and computes its branch from this word. Registers: a, x0, x1, r1, r3.
+    feature and computes its branch from this word. The size comes with the
+    packet, so an engine from a package (PACKAGED) is placed as one from the
+    base. Registers: a, x0, x1, r1, r3.
     """
     on_demand = bundle['onDemand']
     # Word 4 is the feature's own owner bit: dormant means that bit clear in hookstate.
-    lines = ['hplace:', 'move x:(r0+7),a', 'cmp #>1,a', 'bne badsaved', 'move x:(r0+4),x0',
+    lines = ['hplace:', 'move x:(r0+7),a', 'cmp #>$2000,a', 'bge badsaved', 'move a1,x1', 'move x:(r0+4),x0',
              'move #>hookstate,r1', 'move p:(r1),a', 'and x0,a', 'bne badsaved', 'move x0,a']
     features = [feature for feature in FEATURES if feature & on_demand]
     for feature in features:
         lines += ['cmp #>%d,a' % feature, 'beq hwfeat%d' % feature]
     lines += ['bra badsaved']
     for feature in features:
-        words = len(bundle['engines'][feature]['words'])
-        if not 0 < words < 0x2000:
-            raise ValueError('An on-demand engine has no P size')
-        lines += ['hwfeat%d:' % feature, 'move #>$%x,r3' % _base_word(bundle, feature, end), 'move #>%d,x1' % words]
+        lines += ['hwfeat%d:' % feature, 'move #>$%x,r3' % _base_word(bundle, feature, end)]
         if feature != features[-1]:
             lines += ['bra hwshared']
     lines += ['hwshared:', 'move p:(r3),a', 'tst a', 'bne hwplaced',

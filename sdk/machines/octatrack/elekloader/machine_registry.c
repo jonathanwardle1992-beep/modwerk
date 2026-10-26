@@ -56,16 +56,21 @@ extern int mw_stock_validate(uint8_t *);
  * defaults: a priced machine is never admitted, nor its voice rendered. */
 int modwerk_dsp_source_claim(unsigned track, uint32_t module, uint32_t voice, uint32_t engine, uint8_t kind);
 void modwerk_dsp_source_release(unsigned track);
+void modwerk_status_machine_refused(unsigned track, const char *label); /* status.c: the DSP FULL box for a machine */
 void modwerk_dsp_source_engine_off(uint32_t module);
 #ifndef MW_HOST
 __attribute__((weak)) int modwerk_dsp_source_claim(unsigned track, uint32_t module, uint32_t voice, uint32_t engine, uint8_t kind)
 { (void)track; (void)module; (void)voice; (void)engine; (void)kind; return RUNTIME_CYCLES; }
 __attribute__((weak)) void modwerk_dsp_source_release(unsigned track) { (void)track; }
+__attribute__((weak)) void modwerk_status_machine_refused(unsigned track, const char *label) { (void)track; (void)label; }
 __attribute__((weak)) void modwerk_dsp_source_engine_off(uint32_t module) { (void)module; }
 #endif
 /* Each track of the current Part: the priced machine its voice is charged to, or 0. A word each, so the render
  * reads it whole without a mask. */
 static const Machine *volatile charged[8];
+/* Tracks whose refusal the DSP FULL box already showed: charge() retries a refused track on every UI tick, and a box
+ * that reopened each time it timed out would never go away. Cleared when the claim succeeds or the track stops asking. */
+static uint8_t warned;
 static uint32_t key(const Machine *m) { return (uint32_t)(uintptr_t)m; } /* dsp.c's module: the descriptor */
 static unsigned charges(const Machine *m) { unsigned k = 0; for (unsigned t = 0; t < 8; ++t) k += charged[t] == m; return k; }
 /* The track's voice is free; with no other track charged to its machine, so is the machine's engine. */
@@ -82,7 +87,12 @@ static int claim(unsigned track, const Machine *who)
 {
     const Machine *old = charged[track];
     if (old == who) return 1;
-    if (modwerk_dsp_source_claim(track, key(who), who->source_voice, who->source_engine, who->source_kind)) return 0;
+    int refused = modwerk_dsp_source_claim(track, key(who), who->source_voice, who->source_engine, who->source_kind);
+    if (refused) {
+        if (refused == RUNTIME_CYCLES && !(warned & 1u << track)) warned |= (uint8_t)(1u << track), modwerk_status_machine_refused(track, who->label);
+        return 0;
+    }
+    warned &= (uint8_t)~(1u << track);
     charged[track] = who;
     if (old && !charges(old)) modwerk_dsp_source_engine_off(key(old));
     return 1;
@@ -254,6 +264,7 @@ static void charge(const Machine *const *m, unsigned n)
     const Part *part = current_part(); const Machine *who;
     for (unsigned t = 0; t < 8; ++t) {
         if (!owner(m, n, part, t, &who) || !who->source_kind) who = 0;
+        if (!who) warned &= (uint8_t)~(1u << t);
         if (who ? charged[t] != who && !claim(t, who) : charged[t] != 0) release(t);
     }
 }
@@ -272,6 +283,7 @@ unsigned mw_assign(Part *part, unsigned track, unsigned row)
     unsigned absent = !old && orphan(part, track);
     if (next) {
         if (next->admit_track && !next->admit_track(part, track)) return (unsigned)-1;
+        warned &= (uint8_t)~(1u << track); /* a pick is a new ask: say so again if it is refused again */
         if (next->source_kind && old != next && !claim(track, next)) return (unsigned)-1;
         if (old && old != next) leave(part, mirror, track, old);
         if (absent) flex_defaults(part, mirror, track);
@@ -299,9 +311,10 @@ unsigned mw_assign(Part *part, unsigned track, unsigned row)
     return row < 5 ? row : 1;
 }
 static void ui_tick(void);
+void mg_tick(void); /* midi_generators.c: the MIDI tracks' generators */
 void mw_ui_tick(void)
 {
-    MW_STAMP(14); ui_tick(); MW_STAMP(15);
+    MW_STAMP(14); ui_tick(); MW_STAMP(24); mg_tick(); MW_STAMP(25); MW_STAMP(15);
 }
 static void ui_tick(void)
 {
@@ -418,6 +431,63 @@ unsigned mw_row_has_pool(unsigned row)
     const Machine *m[ROWS - 5u]; unsigned n = machines(m);
     return row >= 5 && row < 5 + n && m[row - 5]->flags & MODWERK_MACHINE_POOL;
 }
+/* The frame guard. The frame interrupt (0x4000aad0, level 5) takes the DSP's frame word at its entry, renders each
+ * track's source (each track about twice a frame), then builds the DSP's frame. While it runs, USB (level 4), the UI and
+ * every task wait: kept near a whole frame it froze the panel and dropped USB with POLY8, FM Synth and seven busy stock
+ * tracks while USB recorded (owner's MKII, 24 October 2026), and kept past a frame the DSP's audio stops for good
+ * (OCTATRACK_HARDWARE_TRAPS.md, work inside the frame interrupt). So it has a budget: each frame earns mw_frame_share,
+ * short frames save up to BURST of it, long ones spend it. Its entry stamps mw_frame_t0 and its exit calls
+ * mw_frame_exit (machine_registry.s). Each render of a machine's track is timed, and so is the work after it up to the
+ * exit; before the next frame's same render the guard predicts the frame's length from those. When it would overdraw,
+ * the track renders stock's silent source this time instead: a dropout on that track, never a frozen unit. Tracks only
+ * stock renders, and priced machines' (their voice is the DSP's), always render. A skipped render comes back when the
+ * budget has room for its last cost, or, every PROBE frames, when it would overdraw by at most SLACK: its cost is
+ * measured again. */
+#ifndef DTCN3
+#define DTCN3 (*(volatile uint32_t *)0xfc07c00cu) /* the frame timer: 132 MHz, free-running */
+#endif
+#define FRAME 47891u /* 16 samples at 44.1 kHz, in DTCN3 counts */
+#define BURST (FRAME / 2u)
+#define SLACK (FRAME / 10u)
+#define PROBE 1024u  /* frames, about 0.37 s */
+typedef int Render(unsigned track, unsigned ping, unsigned start, unsigned end);
+volatile uint32_t mw_frame_t0, mw_frame_share = FRAME / 5u * 4u; /* development bases may change the share */
+/* For diagnostics: the longest frame interrupt, the latest start past the frame's time, the time spent in it (/256)
+ * over its frames, the skips and their tracks. */
+volatile uint32_t mw_frame_max, mw_frame_late_max, mw_frame_busy, mw_frame_count, mw_frame_sheds, mw_frame_shed_tracks;
+static int32_t credit;
+static uint32_t late, cost[16], after[16], end_at[16], timed; /* [track], then a track's second render [8 + track] */
+static uint16_t skipped[16];
+void mw_frame_exit(void)
+{
+    uint32_t now = DTCN3, d = now - mw_frame_t0, due = d + late;
+    if (d > mw_frame_max) mw_frame_max = d;
+    late = due > FRAME ? due - FRAME : 0;
+    if (late > mw_frame_late_max) mw_frame_late_max = late;
+    int32_t c = credit + (int32_t)mw_frame_share - (int32_t)d;
+    credit = c > (int32_t)BURST ? (int32_t)BURST : c < -(int32_t)FRAME ? -(int32_t)FRAME : c;
+    mw_frame_busy += d >> 8, mw_frame_count = mw_frame_count + 1u;
+    for (unsigned k = 0; k < 16u; ++k) if (timed >> k & 1u) after[k] = now - end_at[k];
+    timed = 0;
+}
+static int guarded(Render *f, unsigned track, unsigned ping, unsigned start, unsigned end)
+{
+    if (track >= 8u) return f(track, ping, start, end);
+    unsigned k = track + 8u * (timed >> track & 1u);
+    uint32_t at = DTCN3; int r;
+    int32_t over = (int32_t)(at - mw_frame_t0 + cost[k] + after[k]) - credit - (int32_t)mw_frame_share;
+    if (over > 0 && (over > (int32_t)SLACK || ++skipped[k] < PROBE)) {
+        mw_frame_sheds = mw_frame_sheds + 1u, mw_frame_shed_tracks |= 1u << track;
+        r = STOCK(Render *, 0x400047f0u)(track, ping, start, end);
+    } else {
+        skipped[k] = 0;
+        r = f(track, ping, start, end);
+        uint32_t c = DTCN3 - at, fall = cost[k] - (cost[k] >> 3);
+        cost[k] = c > fall ? c : fall; /* a rise at once, a fall by an eighth a frame */
+    }
+    end_at[k] = DTCN3, timed |= 1u << k;
+    return r;
+}
 /* The FLEX renderer, in the audio render: no mask. The row is read once, a word at a time; a module that left
  * stays in memory while the render holds it (the paused-task scan). */
 int mw_source_render_impl(unsigned track, unsigned ping, unsigned start, unsigned end)
@@ -429,12 +499,13 @@ int mw_source_render_impl(unsigned track, unsigned ping, unsigned start, unsigne
     }
     if (valid_bank() && owner(m, n, current_part(), track, &who)) {
         if (who->source_kind && charged[track] != who) /* uncharged: stock's silent source, never an unpaid voice */
-            return STOCK(int (*)(unsigned, unsigned, unsigned, unsigned), 0x400047f0u)(track, ping, start, end);
-        if (who->render) return who->render(track, ping, start, end);
+            return STOCK(Render *, 0x400047f0u)(track, ping, start, end);
+        Render *f = who->render ? who->render : STOCK(Render *, 0x40004008u); /* POLY8's voices render inside stock's */
+        return who->source_kind ? f(track, ping, start, end) : guarded(f, track, ping, start, end);
     } else if (valid_bank() && orphan(current_part(), track)) /* its bytes are the absent machine's, not FLEX's */
-        return STOCK(int (*)(unsigned, unsigned, unsigned, unsigned), 0x400047f0u)(track, ping, start, end);
+        return STOCK(Render *, 0x400047f0u)(track, ping, start, end);
     else
         for (unsigned k = 0; k < n; ++k)
-            if (m[k]->flags & MODWERK_MACHINE_RENDER_FLEX && m[k]->render) return m[k]->render(track, ping, start, end);
-    return STOCK(int (*)(unsigned, unsigned, unsigned, unsigned), 0x40004008u)(track, ping, start, end);
+            if (m[k]->flags & MODWERK_MACHINE_RENDER_FLEX && m[k]->render) return guarded(m[k]->render, track, ping, start, end);
+    return STOCK(Render *, 0x40004008u)(track, ping, start, end);
 }

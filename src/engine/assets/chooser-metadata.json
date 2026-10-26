@@ -184,6 +184,13 @@
       "fx1Only": false
     },
     {
+      "id": "ring-sc",
+      "key": "RING_SC",
+      "fxId": 6,
+      "fx1": true,
+      "fx1Only": false
+    },
+    {
       "id": "analog-bassdrum",
       "key": "ANALOG BD",
       "fxId": null,

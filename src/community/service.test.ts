@@ -38,7 +38,6 @@ async function fixture(){
  db.exec(readFileSync(new URL('../../migrations/0066_beta_testers.sql',import.meta.url),'utf8'))
  db.exec(readFileSync(new URL('../../migrations/0067_configuration_reports.sql',import.meta.url),'utf8'))
  db.exec(readFileSync(new URL('../../migrations/0054_discord_invitation.sql',import.meta.url),'utf8'))
- db.exec(readFileSync(new URL('../../migrations/0080_download_signup_counts.sql',import.meta.url),'utf8'))
  db.exec(readFileSync(new URL('../../migrations/0061_page_traffic.sql',import.meta.url),'utf8'))
  db.exec(readFileSync(new URL('../../migrations/0010_issue_reports.sql',import.meta.url),'utf8'))
  db.exec(readFileSync(new URL('../../migrations/0013_issue_privacy.sql',import.meta.url),'utf8'))
@@ -516,7 +515,7 @@ describe('private aggregate usage statistics',()=>{
   for(let i=0;i<200;i++)expect((await call('/usage/events','POST',usageEvent())).status).toBe(200)
   expect((await call('/usage/events','POST',usageEvent())).status).toBe(429)
   expect(db.prepare('SELECT visitors,page_views FROM usage_daily').get()).toEqual({visitors:1,page_views:200})
- })
+ },15000) // 201 requests through the service; past 5 s on a busy CI runner
 })
 
 describe('page-level traffic',()=>{

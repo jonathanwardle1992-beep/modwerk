@@ -2,7 +2,7 @@
 
 Read [the module guides index](README.md) first. If your effect does anything in time (a delay, a gate, an envelope, a rhythm), also read [sequencing.md](sequencing.md).
 
-**Applies to** modules whose manifest has an `effectId` and a `compatibility.location` of `FX1`, `FX2` or `FX1 / FX2`.
+**Applies to** modules whose manifest has an `effectId` and a `compatibility.location` of `FX1`, `FX2` or `FX1 / FX2`. An effect processes the audio its slot receives, on the DSP. A module that makes or replaces its track's sound is a machine, whichever slot switches it on ([choose the category](README.md#choose-the-category)).
 
 **Already follow it:** [Mini Verb](../../sdk/octabam/modules/miniverb/README.md), [Tape Echo](../../sdk/octabam/modules/tapeecho/README.md), [Euclid](../../sdk/octabam/modules/euclid/README.md), [TapeHead](../../sdk/octabam/modules/tapehead/README.md), [Sidechain Compressor](../../sdk/octabam/modules/sidechain-compressor/README.md), Spectrum, Modulation, Character. Copy the shape of the one closest to yours.
 
@@ -120,7 +120,7 @@ Octabam's behaviour tests run through its DSP host and need a native toolchain (
 
 ## Traps
 
-- No `rep` in DSP code that runs every frame: a `rep` cannot be interrupted, so the host-port handlers that arm the ColdFire's DMA answer late. The audio crackles, a core's tracks go silent or ColdFire RAM is written out of place, on hardware only. A `do` loop is bit-identical. Keep dense X work out of the 8K memory blocks a DMA uses as well; both are in [OCTATRACK_HARDWARE_TRAPS.md](../OCTATRACK_HARDWARE_TRAPS.md#dsp-loader-dynamic-dsp-code).
+- No `rep` anywhere in a DSP source (`npm run modules:check` refuses one in a module listed from 23 October 2026; `do #n,>label / <one instruction> / label:` is bit-identical and interruptible): a `rep` cannot be interrupted, so the host-port handlers that arm the ColdFire's DMA answer late. The audio crackles, a core's tracks go silent or ColdFire RAM is written out of place, on hardware only. A `do` loop is bit-identical. Keep dense X work out of the 8K memory blocks a DMA uses as well; both are in [OCTATRACK_HARDWARE_TRAPS.md](../OCTATRACK_HARDWARE_TRAPS.md#dsp-loader-dynamic-dsp-code).
 - `dsp56kDisassemble` prints a `DO` endpoint as the exclusive next-instruction address (`LA+1`); the encoded loop-address word is the inclusive last loop word. CFG/cycle tooling must use `pc < printed_endpoint`. Do not reprice existing effects by confusing the two representations.
 - The DSP assembler silently mis-encodes some instructions: [octabam's AGENTS.md](../../sdk/octabam/AGENTS.md). Disassemble what you assemble.
 - A knob rename or count change is a stored-data change. Stamp every project before anyone plays it.

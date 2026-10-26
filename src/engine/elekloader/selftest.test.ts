@@ -20,6 +20,7 @@ describe('the base self-test as the update stress test', () => {
   })
   it('names the first failure, in the order of selftest.h', async () => {
     expect(await runSelftest(unit([record(1), record(3, 8 | 256)]), { pollMs: 0 })).toBe(SELFTEST_FAILURES[3]) /* the DSP before the CPU */
+    expect(await runSelftest(unit([record(1), record(3, 2048)]), { pollMs: 0 })).toBe(SELFTEST_FAILURES[11]) /* SELFTEST_FEATURE */
     expect(await runSelftest(unit([record(1), record(3, 128)]), { pollMs: 0 })).toBe('a module doesn’t fit on either DSP core, even with the other effects there removed')
   })
   it('says when it cannot start (playing, or the loader busy)', async () => {

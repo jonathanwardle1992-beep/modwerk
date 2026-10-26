@@ -2,7 +2,6 @@ import { BetaInvitationPage } from './community/BetaInvitationPage'
 import { BrandName } from './components/BrandName'
 import { AccountPage } from './community/AccountPage'
 import { SignupWelcome } from './community/SignupWelcome'
-import { DownloadSignupPreview, PendingFollowsClaim } from './community/DownloadSignupInvite'
 import { HardwareFeedbackReminder } from './community/HardwareFeedbackReminder'
 import { HardwareFeedbackCheckIn } from './community/HardwareFeedbackCheckIn'
 import { NotificationBell } from './community/NotificationBell'
@@ -11,6 +10,7 @@ import { PublicAnnouncement } from './community/PublicAnnouncement'
 import { useMembersOnline } from './community/useMembersOnline'
 import { MembersOnlineChip } from './community/MembersOnline'
 import { DeveloperPage } from './community/DeveloperPage'
+import { MemberGate } from './community/MemberGate'
 import { ForumPage } from './community/ForumPage'
 import { ForumShoutbox } from './community/ForumShoutbox'
 import './community/forum.css'
@@ -22,7 +22,7 @@ import { assetUrl } from './hosting'
 import { octatrackMatchesQuery } from './catalog/module-search'
 import { getRoute, moduleHref } from './routing'
 import { setPageMetadata } from './page-metadata'
-import { HOME_DESCRIPTION, HOME_TITLE } from './site-metadata'
+import { HOME_DESCRIPTION, HOME_TITLE, pageTitle } from './site-metadata'
 import { ModuleSets } from './components/ModuleSets'
 import { ModuleComparison } from './components/ModuleComparison'
 import { api, onCommunityReconnect } from './community/api'
@@ -53,13 +53,13 @@ import type { PrepareUpdate, ReadInventory, StressTest } from './components/Octa
 import type { HubView, SetAction } from './components/OctatrackHub'
 import type { OctatrackLink } from './engine/elekloader/octatrack-link'
 import type { BaseLayout } from './engine/elekloader/base-variants'
-import { missingFromProject, sameModules, UNIT_STATE, unitState } from './config/inventory'
+import { missingFromProject, sameModules, UNIT_STATE, unitState, type LastSeen } from './config/inventory'
 import { ShareModuleButton } from './community/ShareModuleButton'
 import { useBaseInstallPrompt } from './hooks/useBaseInstallPrompt'
 import { OctatrackLinkContext, useInventory, useMissing } from './hooks/useOctatrackLink'
 import { recordLoad } from './hooks/useOctatrackLoad'
 import { pendingBaseInstall } from './config/octatrack-progress'
-import { digiDownloadsEnabled } from './engine/elekloader/protocol'
+import { digiDownloadsEnabled, isCoreBuildPreview } from './engine/elekloader/protocol'
 import { USB_AUDIO_MODULE, usbAudioLayout, type UsbAudioConfiguration } from './config/usb-audio'
 import { downloadSelection, parseSelection } from './config/selection'
 import { Icon } from './components/Icon'
@@ -110,11 +110,13 @@ const OctatrackStatus = lazy(() => beta().then(module => ({ default: module.Octa
 const OctatrackSidebarStatus = lazy(() => beta().then(module => ({ default: module.OctatrackSidebarStatus })))
 const OctatrackActivity = lazy(() => beta().then(module => ({ default: module.OctatrackActivity })))
 const BaseInstallDialog = lazy(() => beta().then(module => ({ default: module.BaseInstallDialog })))
+const PutBackModules = lazy(() => beta().then(module => ({ default: module.PutBackModules })))
 const OctatrackDiagnosticsCollector = lazy(() => import('./components/OctatrackDiagnostics').then(module => ({ default: module.OctatrackDiagnosticsCollector })))
 const DiagnosticsInvitationGate = lazy(() => import('./components/DiagnosticsInvitation').then(module => ({ default: module.DiagnosticsInvitationGate })))
 const RemoteSessionGate = lazy(() => import('./components/RemoteSession').then(module => ({ default: module.RemoteSessionGate })))
 const OwnerNoteGate = lazy(() => import('./components/OwnerNote').then(module => ({ default: module.OwnerNoteGate })))
 const OwnerNotePreview = lazy(() => import('./components/OwnerNote').then(module => ({ default: module.OwnerNotePreview })))
+const BetaJoinPrompt = lazy(() => import('./components/BetaJoinPrompt').then(module => ({ default: module.BetaJoinPrompt })))
 const BetaModuleSets = lazy(() => beta().then(module => ({ default: module.BetaModuleSets })))
 const FirmwareFeedbackPreview = import.meta.env.DEV ? lazy(() => import('./components/FirmwareFeedbackPreview')) : () => null
 const firmwareFeedbackPreview = import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'firmware-feedback'
@@ -152,7 +154,7 @@ export default function App() {
   const mobileWorkspace = useMobileWorkspace()
   const presence = useMembersOnline(), online = presence?.online ?? null
   useEffect(()=>trackPageView(route),[route])
-  const { session, developer, catalog } = useCommunity()
+  const { session, loading: sessionLoading, developer, catalog } = useCommunity()
   const betaAccess = hasBetaAccess(session), accessibleModules = availableModules(betaAccess)
   const detailModule = moduleRoute.startsWith('module/') ? accessibleModules.find((module) => module.id === moduleRoute.slice(7)) : undefined
   const pausedModule = MODULES.find(module => isModulePaused(module.id) && !isModuleAvailable(module.id, betaAccess) && (moduleRoute === 'module/' + module.id || moduleRoute === 'community-module/' + module.id))
@@ -211,9 +213,10 @@ export default function App() {
   const allMachines = allRoute || overviewRoute || (!machineView && !octatrackRoute && remembered === ALL_MACHINES)
   const currentDevice = DEVICES_BY_ID[machineView ? machineRoute!.device.id : octatrackRoute ? 'octatrack' : remembered && remembered !== ALL_MACHINES ? remembered : 'octatrack']
   const machineHasMods = !allMachines && (currentDevice.status === 'available' || currentDevice.status === 'preview')
-  const machineBuildPreview = !allMachines && currentDevice.id === 'digitakt-ii' && currentDevice.status === 'research' && !!currentDevice.sdk
+  const machineBuildPreview = !allMachines && isCoreBuildPreview(currentDevice.id) && currentDevice.status === 'research' && !!currentDevice.sdk
   const machineCanConfigure = machineHasMods || machineBuildPreview
-  useEffect(() => { if (allRoute) rememberDevice(ALL_MACHINES); else if (machineView || octatrackRoute) rememberDevice(currentDevice.id) }, [allRoute, machineView, octatrackRoute, currentDevice.id])
+  // The overview shows All machines too, so the forum and other machine-less pages after it don't fall back to an older machine.
+  useEffect(() => { if (allRoute || overviewRoute) rememberDevice(ALL_MACHINES); else if (machineView || octatrackRoute) rememberDevice(currentDevice.id) }, [allRoute, overviewRoute, machineView, octatrackRoute, currentDevice.id])
   // #devices, the old machine overview, opens the overview page.
   useEffect(() => { if (devicesRoute) window.location.replace('#overview'); else if ((route === 'octatrack' || route.startsWith('octatrack/')) && !betaUi) window.location.replace('#library'); else if (betaUi && route === 'your-octatrack') window.location.replace('#octatrack'); else if (route.startsWith('device/')) window.location.replace(DEVICES_BY_ID[route.slice(7)] ? deviceHref(route.slice(7)) : '#devices') }, [route, devicesRoute, betaUi])
   // The sidebar keeps one shape on every machine: the same categories, counted for the current selection.
@@ -302,13 +305,13 @@ export default function App() {
   useEffect(() => { mainRef.current?.scrollTo({ top: 0 }); window.scrollTo({ top: 0 }); if (faqEntry) document.getElementById('faq-' + faqEntry)?.scrollIntoView({ block: 'start' }) }, [route, faqEntry])
   useEffect(() => {
     const appUrl = new URL(document.baseURI)
-    if (detailModule) setPageMetadata({ title: detailModule.name + ' for Elektron Octatrack — Modwerk', description: detailModule.description, url: new URL(moduleHref(detailModule.id), appUrl).href })
-    else if (digiMod) setPageMetadata({ title: digiMod.title + ' for Elektron ' + currentDevice.name + ' — Modwerk', description: digiMod.summary, url: new URL(deviceHref(digiMod.device, 'module/' + digiMod.id), appUrl).href })
-    else if (projectsRoute) setPageMetadata({ title: PROJECT_TITLE + ' — Modwerk', description: PROJECT_DESCRIPTION, url: new URL('projects/', appUrl).href, image: PROJECT_PREVIEW_IMAGE, imageAlt: PROJECT_PREVIEW_ALT })
-    else if (route === 'submit') setPageMetadata({ title: 'Start developing — Modwerk', description: 'Build a mod for Elektron instruments: write it with the SDK, submit it through GitHub and get it reviewed for the Modwerk library.', url: new URL('submit/', appUrl).href })
+    if (detailModule) setPageMetadata({ title: pageTitle(detailModule.name + ' for Elektron Octatrack'), description: detailModule.description, url: new URL(moduleHref(detailModule.id), appUrl).href })
+    else if (digiMod) setPageMetadata({ title: pageTitle(digiMod.title + ' for Elektron ' + currentDevice.name), description: digiMod.summary, url: new URL(deviceHref(digiMod.device, 'module/' + digiMod.id), appUrl).href })
+    else if (projectsRoute) setPageMetadata({ title: pageTitle(PROJECT_TITLE), description: PROJECT_DESCRIPTION, url: new URL('projects/', appUrl).href, image: PROJECT_PREVIEW_IMAGE, imageAlt: PROJECT_PREVIEW_ALT })
+    else if (route === 'submit') setPageMetadata({ title: pageTitle('Start developing'), description: 'Build a mod for Elektron instruments: write it with the SDK, submit it through GitHub and get it reviewed for the Modwerk library.', url: new URL('submit/', appUrl).href })
     // A public thread owns its title and description, supplied by its static page and refreshed after loading.
     else if (!route.startsWith('forum/thread/')) {
-      const title = overviewRoute || allRoute || route === 'library' ? HOME_TITLE : (hubRoute?'Your Octatrack':machineView==='configuration'?currentDevice.name+' '+w.set:machineView?currentDevice.name+' modules':forumRoute?'Forum':accountRoute?(betaInvitationRoute?'Join the beta':'Account'):developerRoute?(developer?.user&&!route.startsWith('developer/complete')?'Creator settings':'Account'):faqRoute?'FAQ':route==='credits'?'Credits':route==='privacy'?'Privacy':route==='impressum'?'Impressum':route==='community-rules'?'Community rules':route==='report-content'?'Report content':route==='configuration'?w.Set:route.startsWith('submit')?'Start developing':(route==='review'||route==='admin')?'Admin workspace':route.startsWith('module-set')?'Module sets':'Module library')+' · Modwerk'
+      const title = overviewRoute || allRoute || route === 'library' ? HOME_TITLE : pageTitle(hubRoute?'Your Octatrack':machineView==='configuration'?currentDevice.name+' '+w.set:machineView?currentDevice.name+' modules':forumRoute?'Forum':accountRoute?(betaInvitationRoute?'Join the beta':'Account'):developerRoute?(developer?.user&&!route.startsWith('developer/complete')?'Creator settings':'Account'):faqRoute?'FAQ':route==='credits'?'Credits':route==='privacy'?'Privacy':route==='impressum'?'Impressum':route==='community-rules'?'Community rules':route==='report-content'?'Report content':route==='configuration'?w.Set:route.startsWith('submit')?'Start developing':(route==='review'||route==='admin')?'Admin workspace':route.startsWith('module-set')?'Module sets':'Module library')
       setPageMetadata({ title, description: HOME_DESCRIPTION, url: appUrl.href })
     }
   }, [overviewRoute, projectsRoute, faqRoute, route,detailModule,digiMod,forumRoute,accountRoute,betaInvitationRoute,developerRoute,developer?.user,allRoute,machineView,currentDevice.name,w,hubRoute])
@@ -342,6 +345,13 @@ export default function App() {
     add: neededIds.length ? () => neededIds.forEach(toggleModule) : undefined }
   // The set the guided sync is open for.
   const loadingTarget = loadingSet ? workspace.configurations.find(item => item.id === loadingSet) : undefined
+  // After a base change the unit starts without its modules: their sync, from a set with exactly them or a new one.
+  const [putBackId, setPutBackId] = useState<string>()
+  function putBack(last: LastSeen) {
+    const id = configurationsFor('octatrack').find(set => sameModules(set.moduleIds.filter(module => module !== USB_AUDIO_MODULE), last.moduleIds))?.id
+      ?? workspace.importConfiguration('From my Octatrack', last.moduleIds, true, undefined, 'octatrack', undefined, last.removedStockFx)
+    setPutBackId(id); setLoadingSet(id)
+  }
   // Replaces the modules a new one cannot run beside. Adding last goes through toggleModule, which also opens USB setup.
   function swapModule(id: string, removeIds: readonly string[]) {
     for (const removed of removeIds) if (selectedIds.includes(removed)) workspace.toggleModule(removed)
@@ -444,16 +454,18 @@ export default function App() {
       {DSP_LOADER && <section className="configuration-section chooser-options"><h2>Effect menus</h2><label><input type="checkbox" checked={active?.keepStockFx2??true} onChange={event=>setKeepStockFx2(event.target.checked)}/><span><strong>Keep stock FX2 effects</strong><small>Keep the original FX2 effects alongside your modules.</small></span></label></section>}
       {startupOptions}
       <div ref={setBuildResultsSlot} className="build-results" />
-    </div><div className="configuration-checkout">{compatibilityPanel}<div className="checkout-card">{riskAcceptance}{firmwareBuildPanel}</div></div></div></CardInstall>} /></Suspense>
+    </div><div className="configuration-checkout">{compatibilityPanel}<div className="checkout-card">{riskAcceptance}<MemberGate action="build firmware" next={route}>{firmwareBuildPanel}</MemberGate></div></div></div></CardInstall>} /></Suspense>
+  const dialogOpen = !!baseInstall || baseInstallPrompt.open || !!loadingTarget || !!openModule || !!configDialog || configurationsOpen || compareOpen || !!reportingConfiguration
   return (
     <BetaUi.Provider value={betaUi}><OctatrackLinkContext.Provider value={usbLink ?? null}>
       {session.user?.verified && !usbLinkPreview && usbPreview !== 'diagnostics' && <Suspense fallback={null}><OctatrackDiagnosticsCollector memberId={session.user.id} link={usbLink ?? null} inventory={inventory}/></Suspense>}
-      {session.user?.verified && !usbLinkPreview && <Suspense fallback={null}><DiagnosticsInvitationGate key={session.user.id} memberId={session.user.id} link={usbLink ?? null} eligible={hubRoute || configuration || machineView === 'configuration'} blocked={!!baseInstall || baseInstallPrompt.open || !!loadingTarget || !!openModule || !!configDialog || configurationsOpen || compareOpen || !!reportingConfiguration} preview={import.meta.env.DEV && usbPreview === 'diagnostics'}/></Suspense>}
+      {session.user?.verified && !usbLinkPreview && <Suspense fallback={null}><DiagnosticsInvitationGate key={session.user.id} memberId={session.user.id} link={usbLink ?? null} eligible={hubRoute || configuration || machineView === 'configuration'} blocked={dialogOpen} preview={import.meta.env.DEV && usbPreview === 'diagnostics'}/></Suspense>}
+      {usbLink && <Suspense fallback={null}><PutBackModules link={usbLink} inventory={inventory} waiting={dialogOpen} onPutBack={putBack}/></Suspense>}
     <div className={'app-shell' + (phoneLayout ? (libraryNav ? ' has-library-nav' : '') + (toolbarHidden ? ' is-toolbar-hidden' : '') + (libraryDock ? ' has-library-dock' : '') : '')}>
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus() }}>Skip to content</a>
       <aside className="sidebar" aria-label="App sidebar">
         <div className="sidebar-brand">
-          <a className="app-brand" href="#overview"><img src={import.meta.env.BASE_URL + 'modwerk-mark.svg'} width="34" height="34" alt="" /><BrandName session={session} /><small>Custom Firmware</small></a>
+          <a className="app-brand" href="#overview"><img src={import.meta.env.BASE_URL + 'modwerk-mark.svg'} width="34" height="34" alt="" /><BrandName session={session} /><small>Community-built firmware</small></a>
         </div>
         <nav className="sidebar-nav sidebar-home" aria-label="Home"><a href="#overview" className={overviewRoute ? 'active' : ''} aria-current={overviewRoute ? 'page' : undefined}><Icon name="home" /><span>Overview</span><small>{DEVICES.length}</small></a></nav>
         {DEVELOP_HIGHLIGHT && <DevelopCard current={route.startsWith('submit')} />}
@@ -491,6 +503,8 @@ export default function App() {
       <PublicAnnouncement next={route} enabled={newsEnabled} />
       {/* The beta note is required: everywhere but the pages it and the diagnostics step link to, and the account (export, deletion). */}
       {remoteSessionSeen && session.user?.verified && <Suspense fallback={null}><RemoteSessionGate key={session.user.id} /></Suspense>}
+      {/* While an administrator keeps the public round open: the beta runs over USB, so only on a computer. */}
+      {session.available && !sessionLoading && !betaAccess && !touchOnly && !mobileWorkspace && !accountRoute && !faqRoute && !['privacy', 'impressum', 'community-rules', 'report-content'].includes(route) && <Suspense fallback={null}><BetaJoinPrompt /></Suspense>}
       {betaAccess && <Suspense fallback={null}><OwnerNoteGate key={session.user!.id} enabled={!accountRoute && !faqRoute && !['privacy', 'impressum', 'community-rules', 'report-content'].includes(route)} /></Suspense>}
       {import.meta.env.DEV && usbPreview === 'beta-note' && <Suspense fallback={null}><OwnerNotePreview /></Suspense>}
       <Suspense fallback={null}>
@@ -502,7 +516,7 @@ export default function App() {
         const step = (at: number) => { const id = index >= 0 ? order[at] : undefined; return id ? { title: MODULES.find(item => item.id === id)!.name, go: () => setOpenModule(id) } : undefined }
         const state = unitState(openModule, selectedIds, inventory)
         return module && <ModuleDialog title={module.name} index={index >= 0 ? index : undefined} total={order.length} prev={step(index - 1)} next={step(index + 1)} status={state && <StateChip state={state}>{UNIT_STATE[state]}</StateChip>} actions={<ShareModuleButton id={module.id} title={module.name} />} onClose={() => setOpenModule(undefined)}><ModuleDetail key={module.id} modal module={module} selected={selectedIds.includes(module.id)} addBlock={addBlockMap[module.id]} onSwap={removeIds => swapModule(module.id, removeIds)} usbAudio={active?.usbAudio} configurationName={active?.name} configurationId={active?.id} onConfigureUsbAudio={configureUsbAudio} onToggle={() => toggleModule(module.id)} /></ModuleDialog> })()}
-      {usbKit && loadingTarget && !baseInstall && !baseInstallPrompt.open && <LoadDialog key={loadingTarget.id} link={usbKit.link} set={{ name: loadingTarget.name, moduleIds: loadingTarget.moduleIds, removedStockFx: loadingTarget.removedStockFx, usbAudio: loadingTarget.usbAudio }} inventory={inventory} previousName={inventory && configurationsFor('octatrack').find(set => sameModules(set.moduleIds, inventory.moduleIds))?.name} prepareUpdate={usbKit.prepareUpdate} stressTest={usbKit.stressTest} onClose={() => setLoadingSet(undefined)} onInstallBase={layout => { setBaseLayoutWanted(layout); setBaseInstall('manual') }} onEdit={() => { setLoadingSet(undefined); changeConfiguration(loadingTarget.id) }} onCard={() => { setLoadingSet(undefined); setCardOpen(true); workspace.selectConfiguration(loadingTarget.id); window.location.hash = 'octatrack/setup' }} onReport={() => { setLoadingSet(undefined); setReportingConfiguration({ machine: 'octatrack', id: loadingTarget.id }) }} />}
+      {usbKit && loadingTarget && !baseInstall && !baseInstallPrompt.open && <LoadDialog key={loadingTarget.id} link={usbKit.link} set={{ name: loadingTarget.name, moduleIds: loadingTarget.moduleIds, removedStockFx: loadingTarget.removedStockFx, usbAudio: loadingTarget.usbAudio }} putBack={putBackId === loadingTarget.id} inventory={inventory} previousName={inventory && configurationsFor('octatrack').find(set => sameModules(set.moduleIds, inventory.moduleIds))?.name} prepareUpdate={usbKit.prepareUpdate} stressTest={usbKit.stressTest} onClose={() => { setLoadingSet(undefined); setPutBackId(undefined) }} onInstallBase={layout => { setBaseLayoutWanted(layout); setBaseInstall('manual') }} onEdit={() => { setLoadingSet(undefined); changeConfiguration(loadingTarget.id) }} onCard={() => { setLoadingSet(undefined); setCardOpen(true); workspace.selectConfiguration(loadingTarget.id); window.location.hash = 'octatrack/setup' }} onReport={() => { setLoadingSet(undefined); setReportingConfiguration({ machine: 'octatrack', id: loadingTarget.id }) }} />}
       {usbLink && (baseInstall || baseInstallPrompt.open) && <BaseInstallDialog link={usbLink} returnSetId={loadingSet} launch={baseInstall ? baseInstall === 'preview' : !baseInstallPrompt.update} firmwareReady={!!firmware} firmwareError={fileError} onChooseFirmware={file => void readFile(file)} layout={baseLayoutWanted} buildBase={layout => workspace.firmwareClient.current?.buildBase(layout) ?? Promise.reject(new Error('Reload the page.'))} onClose={() => { setBaseLayoutWanted(undefined); if (baseInstall) setBaseInstall(null); else baseInstallPrompt.close() }} onReady={() => { setBaseLayoutWanted(undefined); setBaseInstall(null); baseInstallPrompt.close(); window.location.hash = 'configuration' }}/>}
       </Suspense>
       {supportOpen && <SupportDialog url={SUPPORT_URL} onClose={() => setSupportOpen(false)} />}
@@ -521,8 +535,6 @@ export default function App() {
         <main className="workspace-content" id="main-content" ref={mainRef} tabIndex={-1}>
           {firmwareFeedbackPreview && <Suspense fallback={null}><FirmwareFeedbackPreview/></Suspense>}
           {!accountRoute && <SignupWelcome key={route} />}
-          {!accountRoute && <PendingFollowsClaim />}
-          {import.meta.env.DEV && <DownloadSignupPreview />}
           {!accountRoute && !developerRoute && !configuration && machineView !== 'configuration' && !['admin', 'privacy', 'impressum', 'community-rules', 'report-content'].includes(route) && <HardwareFeedbackReminder />}
           {!phoneLayout && !hubRoute && projectNotice}
           {workspace.storageError && <div className="file-error" role="alert">{workspace.storageError} Export important configurations before closing this tab.</div>}
@@ -531,7 +543,7 @@ export default function App() {
           {projectsRoute ? <ProjectsPage key={`projects-page:${route}`} route={route} /> :  faqRoute ? <FaqPage key={route} open={faqEntry} /> : route === 'credits' ? <CreditsPage /> : overviewRoute ? <OverviewPage overview={overview} /> : !ready ? <div className="loading-panel" role="status">Opening your workspace…</div> : <>
           {onLibrary ? <MachineLibrary buildHref={configurationHref} buildLabel={'Build firmware for ' + DEVICES_BY_ID[configurationTarget].name} octatrackCatalogue={accessibleModules} onClearQuery={() => setQuery('')} onBrowse={rememberBrowse} device={allMachines ? undefined : currentDevice} machinePicker={phoneLayout ? undefined : machinePicker} phone={phoneLayout} resultsSlot={resultsSlot} query={query} category={libraryCategory as ModuleCategory | undefined} octatrackModules={visibleModules} family={family} onFamilyChange={setFamily} sort={sort} onSortChange={setSort} statistics={statistics} octatrackConflicts={conflicts} octatrackBlocks={addBlockMap} onSwapOctatrack={swapModule} comparison={comparison} onCompare={toggleComparison} onOpenComparison={() => setCompareOpen(true)} viewedModuleVersions={viewedModuleVersions} moduleBaseline={moduleBaseline} octatrackSelected={selectedIds} onToggleOctatrack={toggleModule} digiSelected={digiSelected} onToggleDigi={(device, id) => workspace.toggleModule(id, device)} onClearSearch={() => { setQuery(''); setFamily('all') }}>
             {!allMachines && currentDevice.id === 'octatrack' && !!catalog.filter((item,index,items)=>!MODULES.some(module=>module.id===item.module_id)&&items.findIndex(other=>other.module_id===item.module_id)===index).length && <section className="published-collection"><h2>Community modules</h2><div className="module-grid">{catalog.filter((item,index,items)=>!MODULES.some(module=>module.id===item.module_id)&&items.findIndex(other=>other.module_id===item.module_id)===index).sort((a,b)=>compareModules({id:a.module_id,name:a.title,authorName:a.author,addedAt:a.added_at??undefined,updatedAt:a.updated_at??undefined},{id:b.module_id,name:b.title,authorName:b.author,addedAt:b.added_at??undefined,updatedAt:b.updated_at??undefined},sort,statistics)).map(item=><article className="published-card" key={item.module_id}><span className="pill">Reviewed contribution</span><h2><a href={'#community-module/'+item.module_id}>{item.title}</a></h2><p>{item.description}</p><ModulePopularity statistics={statistics?.find(stats=>stats.module_id===item.module_id)}/><a className="text-button" href={'#community-module/'+item.module_id}>View module →</a></article>)}</div></section>}
-          </MachineLibrary> : digiDevice && digiMod ? <DigiModDetail browse={browse} onBackToResults={restoreBrowse} key={digiMod.device+'-'+digiMod.id} device={digiDevice} mod={digiMod} selected={machineSelected.includes(digiMod.id)} onToggle={() => toggleMachineModule(digiMod.id)} /> : digiDevice && machineView === 'configuration' ? <DigiConfiguration key={digiDevice.id} onReport={() => machineActive && setReportingConfiguration({ machine: digiDevice.id, id: machineActive.id })} device={digiDevice} configuration={machineActive} configurations={machineConfigurations} onSelect={id => { workspace.selectConfiguration(id) }} onDialog={setConfigDialog} onToggle={toggleMachineModule} onImport={item => workspace.importConfiguration(item.name,item.moduleIds,false,item.moduleVersions,digiDevice.id)} /> : missingRoute?<div className="no-results"><h1>{pausedModule ? 'Module temporarily unavailable' : 'Page not found'}</h1><p>{pausedModule ? pausedModule.name + ' is temporarily unavailable.' : 'This module or page is not in the current catalog.'}</p><a className="button button-quiet" href="#library">Open module library</a></div>:hubRoute?hubPage:route==='module-sets'||route.startsWith('module-set/')?(betaUi ? <Suspense fallback={null}><BetaModuleSets query={query} yours={{ configurations: workspace.configurations, activeId: sidebarConfiguration?.id, currentDevice: machineCanConfigure ? currentDevice.id : 'octatrack', onSelect: changeConfiguration, onCreate: newConfiguration }} id={moduleRoute.startsWith('module-set/')?moduleRoute.slice(11):undefined} onUse={(name,ids)=>{workspace.importConfiguration(name,ids);window.location.assign('#configuration')}}/></Suspense> : <ModuleSets query={query} id={moduleRoute.startsWith('module-set/')?moduleRoute.slice(11):undefined} onUse={(name,ids)=>{workspace.importConfiguration(name,ids);window.location.assign('#configuration')}}/>):forumRoute ? <ForumPage key={route} route={route} configuration={storedActive} configurations={workspace.configurations} onCopy={config=>{const device=config.device??'octatrack';workspace.importConfiguration(config.name,config.moduleIds,config.keepStockFx2,config.moduleVersions,device,config.usbAudio);window.location.assign(deviceHref(device,'configuration'))}}/> : developerRoute ? <DeveloperPage key={route.split('/')[0]} route={route}/> : accountRoute ? betaInvitationRoute ? <BetaInvitationPage key={(session.user?.id ?? 'visitor') + ':' + moduleRoute} campaign={moduleRoute.slice(10)} /> : <AccountPage key={route.split('/').slice(0,2).join('/')} route={route}/> : route === 'privacy' ? <PrivacyPage /> : ['impressum','community-rules','report-content'].includes(route) ? <LegalPage route={route}/> : route.startsWith('submit') ? <SubmissionPage key={route} moduleId={route.split('/')[1] ?? ''} machine={new URLSearchParams(route.split('?')[1] ?? '').get('machine') ?? undefined} /> : route === 'review'||route === 'admin' ? <AdminPage /> : communityModule ? <PublishedModulePage key={communityModule.module_id} module={communityModule} /> : detailModule ? <ModuleDetail browse={browse} onBackToResults={restoreBrowse} key={detailModule.id} module={detailModule} selected={selectedIds.includes(detailModule.id)} addBlock={addBlockMap[detailModule.id]} onSwap={removeIds => swapModule(detailModule.id, removeIds)} usbAudio={active?.usbAudio} configurationName={active?.name} configurationId={active?.id} onConfigureUsbAudio={configureUsbAudio} onToggle={() => toggleModule(detailModule.id)} /> : configuration ? (
+          </MachineLibrary> : digiDevice && digiMod ? <DigiModDetail browse={browse} onBackToResults={restoreBrowse} key={digiMod.device+'-'+digiMod.id} device={digiDevice} mod={digiMod} selected={machineSelected.includes(digiMod.id)} onToggle={() => toggleMachineModule(digiMod.id)} /> : digiDevice && machineView === 'configuration' ? <DigiConfiguration key={digiDevice.id} onReport={() => machineActive && setReportingConfiguration({ machine: digiDevice.id, id: machineActive.id })} device={digiDevice} configuration={machineActive} configurations={machineConfigurations} onSelect={id => { workspace.selectConfiguration(id) }} onDialog={setConfigDialog} onToggle={toggleMachineModule} onImport={item => workspace.importConfiguration(item.name,item.moduleIds,false,item.moduleVersions,digiDevice.id,undefined,undefined,undefined,item.storageLock)} onStorageLock={workspace.saveStorageLock} /> : missingRoute?<div className="no-results"><h1>{pausedModule ? 'Module temporarily unavailable' : 'Page not found'}</h1><p>{pausedModule ? pausedModule.name + ' is temporarily unavailable.' : 'This module or page is not in the current catalog.'}</p><a className="button button-quiet" href="#library">Open module library</a></div>:hubRoute?hubPage:route==='module-sets'||route.startsWith('module-set/')?(betaUi ? <Suspense fallback={null}><BetaModuleSets query={query} yours={{ configurations: workspace.configurations, activeId: sidebarConfiguration?.id, currentDevice: machineCanConfigure ? currentDevice.id : 'octatrack', onSelect: changeConfiguration, onCreate: newConfiguration }} id={moduleRoute.startsWith('module-set/')?moduleRoute.slice(11):undefined} onUse={(name,ids)=>{workspace.importConfiguration(name,ids);window.location.assign('#configuration')}}/></Suspense> : <ModuleSets query={query} id={moduleRoute.startsWith('module-set/')?moduleRoute.slice(11):undefined} onUse={(name,ids)=>{workspace.importConfiguration(name,ids);window.location.assign('#configuration')}}/>):forumRoute ? <ForumPage key={route} route={route} configuration={storedActive} configurations={workspace.configurations} onCopy={config=>{const device=config.device??'octatrack';workspace.importConfiguration(config.name,config.moduleIds,config.keepStockFx2,config.moduleVersions,device,config.usbAudio);window.location.assign(deviceHref(device,'configuration'))}}/> : developerRoute ? <DeveloperPage key={route.split('/')[0]} route={route}/> : accountRoute ? betaInvitationRoute ? <BetaInvitationPage key={(session.user?.id ?? 'visitor') + ':' + moduleRoute} campaign={moduleRoute.slice(10)} /> : <AccountPage key={route.split('/').slice(0,2).join('/')} route={route}/> : route === 'privacy' ? <PrivacyPage /> : ['impressum','community-rules','report-content'].includes(route) ? <LegalPage route={route}/> : route.startsWith('submit') ? <SubmissionPage key={route} moduleId={route.split('/')[1] ?? ''} machine={new URLSearchParams(route.split('?')[1] ?? '').get('machine') ?? undefined} /> : route === 'review'||route === 'admin' ? <AdminPage /> : communityModule ? <PublishedModulePage key={communityModule.module_id} module={communityModule} /> : detailModule ? <ModuleDetail browse={browse} onBackToResults={restoreBrowse} key={detailModule.id} module={detailModule} selected={selectedIds.includes(detailModule.id)} addBlock={addBlockMap[detailModule.id]} onSwap={removeIds => swapModule(detailModule.id, removeIds)} usbAudio={active?.usbAudio} configurationName={active?.name} configurationId={active?.id} onConfigureUsbAudio={configureUsbAudio} onToggle={() => toggleModule(detailModule.id)} /> : configuration ? (
             <div className="configuration-page">
               <ConfigurationHeader kicker="YOUR WORKSPACE" meta="Octatrack · OS 1.40C · Changes save automatically on this device. Configurations use current module versions." configuration={active} configurations={workspace.configurations} onSelect={changeConfiguration} onDialog={setConfigDialog} onImport={()=>importRef.current?.click()} shareHref="#forum/new?category=configs" canReport={!!selectedIds.length} onReport={() => active && setReportingConfiguration({ machine: 'octatrack', id: active.id })}/>
               <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={event=>void importSelection(event)} aria-label="Import configuration backup"/>{importError&&<p className="file-error" role="alert">{importError}</p>}
@@ -561,7 +573,7 @@ export default function App() {
                   <LazyPanel name="Compatibility details"><CompatibilityPanel ids={selectedIds} keepStockFx2={DSP_LOADER && (active?.keepStockFx2??true)} buildState={firmwareBuild.state} buildError={firmwareBuild.error} buildConflict={firmwareBuild.conflict} onFix={fixConflict}/></LazyPanel>
                   <div className="checkout-card">{mobileWorkspace ? <ConfigurationHandoff onExport={saveSelection} exported={saved} canExport={!!active} /> : <>
                     <RiskAcceptance checked={riskAccepted.key===firmwareBuild.key&&riskAccepted.accepted} onChange={accepted => setRiskAccepted({key:firmwareBuild.key,accepted})}/>
-                    <FirmwareBuildPanel build={firmwareBuild} available={ENGINE_AVAILABLE} downloadsEnabled={DOWNLOADS_ENABLED} firmwareReady={!!firmware} moduleCount={selection.length} riskAccepted={riskAccepted.key===firmwareBuild.key&&riskAccepted.accepted} configurationName={active?.name??'Configuration'} onExport={saveSelection} exported={saved} results={buildResultsSlot}/></>}
+                    <MemberGate action="build firmware" next={route}><FirmwareBuildPanel build={firmwareBuild} available={ENGINE_AVAILABLE} downloadsEnabled={DOWNLOADS_ENABLED} firmwareReady={!!firmware} moduleCount={selection.length} riskAccepted={riskAccepted.key===firmwareBuild.key&&riskAccepted.accepted} configurationName={active?.name??'Configuration'} onExport={saveSelection} exported={saved} results={buildResultsSlot}/></MemberGate></>}
                   </div>
                 </div>
               </div>
