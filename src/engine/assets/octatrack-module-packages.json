@@ -95,6 +95,7 @@
     },
     {
       "id": "ring-sc",
+      "unitName": "SC Ringmod",
       "slots": "both",
       "cycles": 81,
       "cyclesKind": "executed",
@@ -116,10 +117,10 @@
       "requires": 8,
       "claims": 4,
       "version": "0.2.0-experimental",
-      "name": "Ringmod SC",
+      "name": "SC Ringmod",
       "module": "773c84aa",
       "bytes": 2416,
-      "sha256": "2ba32a49c49fbda951ae3658d663e6e8663d7ff6680e27e5b089b163d7e0a187",
+      "sha256": "5c4e7fcfdc2ec212ae2bd551fe959fe2a2c8a798e8ad24baee08b44093c6304a",
       "path": "octatrack-modules/ring-sc/0.2.0-experimental.mwrm"
     },
     {
@@ -335,9 +336,9 @@
       "name": "SIDECHAIN COMP",
       "module": "95cff696",
       "bytes": 1236,
-      "sha256": "02d12ff6121c59e0e429a554b4743309b623db756432217f1560d4f1bb66d8ca",
+      "sha256": "ed2431f0ffe91e3def6a0101441ed650cab1db9a25a6bf83bff2dc2555b8cd0e",
       "path": "octatrack-modules/sidechain-compressor/0.1.2-experimental.mwrm",
-      "requiredBase": "0cce96de879073df23111b6180b84db4e4d3e2ad91da273a3ec4c3efced1494c"
+      "requiredBase": "c1ae2ee92a829e06aa9398d35981b8228efdd34c578c9583ef36fba8f5bc637f"
     },
     {
       "id": "output-matrix",
@@ -351,9 +352,9 @@
       "name": "OUTPUT MATRIX",
       "module": "caf158b5",
       "bytes": 3740,
-      "sha256": "07081e26f23050bd4e5ccdda834c0de64dbae41988b63904bbab7c8c84582113",
+      "sha256": "4d95e2cd0a941ca0e20da648dff0cb1c363bb32ef12da1386ebd2c64834c975a",
       "path": "octatrack-modules/output-matrix/0.1.1-experimental.mwrm",
-      "requiredBase": "0cce96de879073df23111b6180b84db4e4d3e2ad91da273a3ec4c3efced1494c"
+      "requiredBase": "c1ae2ee92a829e06aa9398d35981b8228efdd34c578c9583ef36fba8f5bc637f"
     },
     {
       "id": "cc-map",
@@ -369,7 +370,7 @@
       "bytes": 966,
       "sha256": "c7cd39a5f645d69279d3a288c40b8366e6638acdc042cf0fe68dfb9964a68ea2",
       "path": "octatrack-modules/cc-map/0.1.2-experimental.mwrm",
-      "requiredBase": "0cce96de879073df23111b6180b84db4e4d3e2ad91da273a3ec4c3efced1494c"
+      "requiredBase": "c1ae2ee92a829e06aa9398d35981b8228efdd34c578c9583ef36fba8f5bc637f"
     },
     {
       "id": "quantize-live-rec-toggle",
@@ -430,7 +431,7 @@
       "bytes": 1818,
       "sha256": "ffd76eb8263d9eab8577a9a5dfbd9198f402d93b60d9e3231ef50f3bf466788f",
       "path": "octatrack-modules/recorder-loop-fix/0.1.0-experimental.mwrm",
-      "requiredBase": "0cce96de879073df23111b6180b84db4e4d3e2ad91da273a3ec4c3efced1494c"
+      "requiredBase": "c1ae2ee92a829e06aa9398d35981b8228efdd34c578c9583ef36fba8f5bc637f"
     },
     {
       "id": "analog-bassdrum",
@@ -444,9 +445,9 @@
       "name": "Analog BD",
       "module": "abdb1445",
       "bytes": 25822,
-      "sha256": "af3f9b0ad96c3edbf09d8db6b54b76ae97bc3684efdcdedbacf2ff8123171ab4",
+      "sha256": "c2d8644cba572a3ff6534c84a1f4273f922e7469abce43fe9b7a2ecb787c0ef7",
       "path": "octatrack-modules/analog-bassdrum/0.1.5-experimental.mwrm",
-      "requiredBase": "0cce96de879073df23111b6180b84db4e4d3e2ad91da273a3ec4c3efced1494c",
+      "requiredBase": "c1ae2ee92a829e06aa9398d35981b8228efdd34c578c9583ef36fba8f5bc637f",
       "requires": 0,
       "claims": 1,
       "entries": 1

@@ -323,13 +323,16 @@ static uint32_t page_stage(const struct mw_controller_binding *b, uint8_t saved[
     }
     return donor;
 }
-/* Masked only for the byte copy: the descriptor never changes under a reader. */
+/* Masked only for the byte copy: the descriptor never changes under a reader. The screen may already show the page
+ * as it was (FX SETUP opened at the pick that activated it, #882): runtime.c redraws it on the next UI tick. */
+extern volatile uint8_t modwerk_runtime_redraw_wanted;
 static void page_write(uint32_t donor, const uint8_t *from)
 {
     volatile uint8_t *d = DONOR(donor);
     uint32_t irq = modwerk_machine_mask();
     for (unsigned i = 0; i < PAGE_BYTES; ++i) d[i] = from[i];
     modwerk_machine_unmask(irq);
+    modwerk_runtime_redraw_wanted = 1;
 }
 static unsigned page_of(unsigned at, uint32_t generation)
 {
