@@ -22,6 +22,8 @@ No knob. In PERSONALIZE this is a stock checkbox: **only [YES] ticks or unticks*
 
 ## Usage
 
+Tick PLAY START in PERSONALIZE when you want [PLAY] to start from the beginning instead of pausing. Leave the box empty for stock play/pause. The setting is global, not a Part or project field.
+
 ### Quick tutorial
 
 1. Press [PROJ], open SYSTEM, then PERSONALIZE, and scroll to PLAY START.

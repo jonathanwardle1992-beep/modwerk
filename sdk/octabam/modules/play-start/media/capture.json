@@ -8,7 +8,7 @@
   },
   "moduleVersion": "0.1.10-experimental",
   "buildKind": "hardware LCD photograph",
-  "sourceSha256": "8525ce736fc4a052b8241e4b2f7c10769247419d4e6fe996b957f2d7ad9bc0ce",
+  "sourceSha256": "91d0a770ce8bf1292f8b03866fe85f017f172081fc9d73607857c9b0fd2104e7",
   "screenshots": {
     "ot-system.png": "f1cbf0c6652433b99e13f0cf2b9270e89301802df508d56aefc6d262514c8416",
     "ot-personalize-empty.png": "32caaa4102432a6f70bef40d6fbb3df7e17a7d2dea052d033419cf7379074e3c",

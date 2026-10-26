@@ -122,7 +122,7 @@
     ],
     "qualification": {
       "moduleVersion": "0.1.10-experimental",
-      "sourceSha256": "8525ce736fc4a052b8241e4b2f7c10769247419d4e6fe996b957f2d7ad9bc0ce",
+      "sourceSha256": "91d0a770ce8bf1292f8b03866fe85f017f172081fc9d73607857c9b0fd2104e7",
       "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
       "cycles": [
         {
@@ -217,8 +217,8 @@
         "shows": "location",
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
-        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
-        "setup": "Hardware photograph of the LCD, 25 October 2026. Cropped to the glass, two greys, 768x384 nearest neighbour. Photographed SYSTEM STATUS stamp reads PS 0.1.9. Packed 0.1.10 MAIN SHA-256 is this field."
+        "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
+        "setup": "Hardware photograph of the LCD, 25 October 2026. Cropped to the glass, two greys, 768x384 nearest neighbour. Photographed SYSTEM STATUS stamp reads PS 0.1.9. Packed 0.1.10 card SHA-256 is this field; firmware is not in git."
       }
     },
     {
@@ -234,7 +234,7 @@
         "shows": "location-and-controls",
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
-        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
+        "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
         "setup": "Same hardware session as ot-system.png. PLAY START selected, empty box."
       }
     },
@@ -251,7 +251,7 @@
         "shows": "location-and-controls",
         "firmware": "1.40C",
         "moduleVersion": "0.1.10-experimental",
-        "imageSha256": "fee9022fee46c16c9de6f6dfe7a48abc949ab7d7866761782cd4feb03f73323e",
+        "imageSha256": "275e74e4afcd9eee48b382fa5eb09496d62deca941990f7e93f193c20f3e6558",
         "setup": "Same hardware session as ot-system.png. PLAY START selected, ticked."
       }
     }
