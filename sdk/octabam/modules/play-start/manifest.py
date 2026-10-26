@@ -37,7 +37,7 @@ import os
 
 from remix.schema import Category, Detour, Gate, Kind, Linked, Module, Poke, Proof, TableGrow
 
-_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__)))
+_HERE = os.path.relpath(os.path.dirname(os.path.realpath(__file__))).replace("\\", "/")
 H = bytes.fromhex
 
 LABELS, GETTERS, SETTERS = 0x400b2a34, 0x400b2a74, 0x400b2ac0
@@ -59,7 +59,7 @@ MODULE = Module(
     proof_note="0.1.10: PERSONALIZE empty unless MAGIC_ON; one YES ticks. 0.1.9 same-unit card started X and needed two YES to clear. USB Keep/Undo and ot_emu untested.",
     doc="PERSONALIZE -> PLAY START checkbox: empty keeps stock play/pause; ticked makes [PLAY] always start from the beginning.",
     linked=(
-        Linked("playstart", os.path.join(_HERE, "playstart.s")),
+        Linked("playstart", _HERE + "/playstart.s"),
     ),
     detours=(
         Detour(
