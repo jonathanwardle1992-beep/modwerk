@@ -25,6 +25,23 @@ image is modified. The project provides:
 - tests against the Ziddle C674x emulator (TI build vs a host build of the
   same C), which is not hardware evidence.
 
+[Ziddle](https://berbasoft.com/ziddle/) is Berbasoft's emulator and CLI
+toolkit for Zoom pedals, in Rust; its author lets anyone use its code without
+asking or crediting (Discord, 1 November 2026). Use it to iterate on effects
+without a pedal. It is a developer tool: never hardware evidence, and the site
+never bundles it or offers it to musicians, so it cannot stand in for a pedal
+(owner, 31 October 2026).
+
+`npm run upstream:tools` keeps its source at the archive pinned in
+`sdk/upstream-tools.json`; build it there with
+`cargo build --release --locked -p ziddle-cli` (Rust 1.88 or newer). Modwerk
+uses only the emulator, on your own effect files: `ziddle effect check
+FILE.ZDL` reads the loader contract and `ziddle effect render FILE.ZDL in.wav
+out.wav` plays a 44.1 kHz WAV through it, both without Zoom firmware. Leave
+`library import` and `NAME@FIRMWARE` alone: they read a Zoom updater. An effect
+whose coefficient knobs (depth, rate, mix) read the firmware refuses to render
+without one; test it on the pedal.
+
 ## Devices
 
 | Device | Firmware | Status (from the project's reports) |
@@ -37,12 +54,17 @@ image is modified. The project provides:
 
 Related: [MIDISTOMP](https://github.com/matujuice/zoom-ms-midistomp) (Luca
 Matturro, MIT) is custom firmware for these pedals, installed with a modified
-Zoom updater: the one place Modwerk's OS-image steps could apply. Its
-upcoming v2.0 reportedly raises the patch DSP limit to about 300.
+Zoom updater: the one place Modwerk's OS-image steps could apply. Its v2.0
+(2 November 2026) raises the patch DSP limit from 225 to 300 and adds parallel
+routing, a perform mode, a tempo-synced looper and MIDI clock sync; every pedal
+it runs on reports as an MS-70CDR over USB. The G1on series is not covered.
+Luca's [ZDL effects pack](https://github.com/matujuice/zoom-ms-zdl-effects-pack)
+(MIT, 17 effects) came with it.
 
-Out of scope: the ZD2 pedals (MS-50G+, MS-60B+, MS-70CDR+ and the Four
-series). For those, see Stomphacks and nam2zoom, which already have their
-own pipelines.
+Not covered here: the ZD2 pedals (MS-50G+, MS-60B+, MS-70CDR+ and the Four
+series), whose pedal page, base and contract this plan does not apply to.
+The G1 FOUR is in research in [ZOOM_ZD2.md](ZOOM_ZD2.md); for the MS Plus
+pedals, see Stomphacks and nam2zoom, which already have their own pipelines.
 
 ## How it maps onto Modwerk
 
@@ -199,7 +221,7 @@ mod selection and to his transport block as the shared tempo contract.
   own file.
 - [`zoom-base.ts`](../src/engine/zoom/zoom-base.ts), with `ais.ts` (a port of
   zoomms' `ais.py`), applies them in the browser. From the stock MS-70CDR 2.10
-  Mac updater (27 October 2026) it builds `hello` and MIDISTOMP V1.2 byte for
+  Mac updater (27 October 2026) it builds `hello` and MIDISTOMP V2.0.1 byte for
   byte as zoomms does: `ZOOM_MS70CDR_APP='…/ZOOM MS-70CDR v2.10 Updater.app'
   npx vitest run src/engine/zoom`. Firmware never enters CI.
 - A new MIDISTOMP revision: run the import on a clean checkout with
@@ -223,8 +245,11 @@ Nothing writes to a pedal yet. Before the first write of our own:
    `F0 52 00 61 <command> … F7`, numbers in 7-bit groups, least significant
    first: erase `0A` + address (5) + length (5); write `02` + address (5) +
    length (2) + 2,048 bytes packed 8-into-7, high bits first, + CRC32 of the
-   block XOR `0xFFFFFFFF` (5); finish `04`, and the pedal reboots. Each answers
-   `00 00`. The recording settles anything the OS write does differently.
+   block XOR `0xFFFFFFFF` (5); finish `04`. Each answers `00 00`; a write
+   with a bad CRC answers `00 08`, and sending that block again fixes it. The
+   pedal does not reboot after `04`: the owner restarts it. A USB recording
+   of MIDISTOMP's updater on an MS-70CDR showed these messages, and the OS
+   erase answering after about 3 s.
 3. **Its steps**, the stock updater's script with MIDISTOMP's skips
    (`zoomms/macapp.py`): erase `0x0EF000` +`0x1000` (the OS trailer first, so
    an interrupted flash shows); if the boot logo changed, erase `0x3FD000`
@@ -251,8 +276,10 @@ install throughout.
 6. `OctatrackHub` taking a machine instead of `ZoomHub` copying it, then the
    base install and update on the pedal page, effect sync (file plus
    effect-list record, then a power cycle, as proven) and module sets.
-7. The project's own knob handlers instead of the stock ones every built
-   effect carries (Manro): until then no ZDL effect can be listed. Then the
+7. Effects without stock code: the runtime that replaces the stock knob
+   handlers is in `vendor/zoom-zdl-runtime/` (Leemuzhko, [what's left](ZDL_MODULE_CONTRACT.md#two-things-to-settle-first));
+   the project's linker takes it and the effects are rebuilt and retested
+   (Manro). Until then no ZDL effect can be listed. Then the
    `zdl` module contract (effect-ID ledger, DSP limit 300 under MIDISTOMP 2)
    and a first module set.
 8. Later: the Windows `.exe` as input (a port of `zoomms/parts.py`), the
