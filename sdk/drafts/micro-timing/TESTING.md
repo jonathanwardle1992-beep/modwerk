@@ -32,6 +32,14 @@ Package `f5b9682175f295875dbecb66a18524c205ba526d88e9bd7dc9cdd7d270d01292`, 2,92
 
 Not run: the scripted panel pass, the soak, the price and screenshots. Those steps drive the unit, and this base refused the development requests they use.
 
+## Development twin boot
+
+20 November 2026, OCTATRACK 1.40C. Before the boot the unit was on the flashed base `c889442d9b119d5f`, generation 2, active `c889442d9b119d5f`, normal. The inventory was the same 24 modules as the flashed-base trial above, and Micro Timing was not among them.
+
+The development twin built from this checkout, with the beta flags and `--dev` and without controller rows, is configuration `a7227df2ba0bc27ea1a73eb315ad47b06f59e89e2be6d3359240e8d2f33aea43`. `npm run device -- boot` staged that image to 100% and armed the restart into it. It was not flashed. No `--chunk` was passed and nothing was accepted.
+
+The unit did not come back on USB within 60 seconds. Opening the bridge four more times after that, the last of them more than a minute later, each reported no unit running the test base, and no Elektron device with vendor id 1935 was present. Package `f5b9682175f295875dbecb66a18524c205ba526d88e9bd7dc9cdd7d270d01292`, 2,926 bytes, was built from this checkout and was not sent. LEVEL was not turned and the footer was not read. Nothing was kept. No second boot was started.
+
 ## Stock flows
 
 Not tested on a module build, except the power-off footer in Keep and power cycle. Intended checks:
@@ -99,7 +107,7 @@ Removing the module while TRACK TRIG EDIT's key layer was still up was refused, 
 
 ## Hardware
 
-Reported on the private MICRO T9 card, as above, and for this package the power-cycle footer in Keep and power cycle. The development-twin trial above is not a LEVEL pass. The flashed-base trial on 20 November 2026 did not observe LEVEL. USB removal needs that key layer closed. The LCD captures below are emulator frames, not a hardware result.
+Reported on the private MICRO T9 card, as above, and for this package the power-cycle footer in Keep and power cycle. The development-twin trial above is not a LEVEL pass. The flashed-base trial on 20 November 2026 did not observe LEVEL. The development-twin boot later that day was armed and the unit did not come back on USB, so LEVEL was not read then either. USB removal needs that key layer closed. The LCD captures below are emulator frames, not a hardware result.
 
 ## OT UI capture evidence
 
