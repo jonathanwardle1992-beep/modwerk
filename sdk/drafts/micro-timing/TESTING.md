@@ -22,6 +22,16 @@ Earlier private cards failed as the author reported them: a crash from a stub in
 
 19 November 2026, MKII, OS 1.40C. Development twin `878307834ad3c23a` was RAM-booted and not flashed. Package `f5b9682175f295875dbecb66a18524c205ba526d88e9bd7dc9cdd7d270d01292` ran as a trial for about 180 seconds and was not accepted. The diagnostic value stayed `0x0`. One refusal appeared near the end. The verdict was no crash, stall, freeze or skipped track. Rollback was refused with needs-recovery, and the USB cable was unplugged. This is not a LEVEL pass on this package. Afterwards the unit was back on the flashed base `c889442d9b119d5f`, generation 0, with the same 24 kept modules and neither this module nor Screen Off.
 
+## Trial on the flashed base
+
+20 November 2026, OCTATRACK 1.40C. The unit was on the flashed base `c889442d9b119d5f`, generation 0, active `c889442d9b119d5f`. It was not a development twin. The inventory was these 24 modules, and Micro Timing was not among them: Mini Verb, Tape Echo, Euclid, Repitch, TapeHead, Air Chorus, Analog BD, FM Synth, Preview Vol, Play Modes, Mute Modes, Quant Live Rec, DirectJmp Kyoti, Arp Key Locks, beat-slicer, Slow LFO, Bar LED, tiempos, syntiz, Track Solo, Amiga, Kits, MIDI Scenes, Temp Save.
+
+`npm run device -- state` was refused: "This base does not answer development requests: build it with --dev." The LEVEL encoder, the screen and memory reads use those requests, so LEVEL was not turned and the footer was not read. The footer this package draws is the stock fraction in `mt_strbuf` (`MTn:+1/384` or `MTn:ON GRID`).
+
+Package `f5b9682175f295875dbecb66a18524c205ba526d88e9bd7dc9cdd7d270d01292`, 2,926 bytes, built from `sdk/drafts/micro-timing` at `8f5a64d26`. `npm run device -- try` ran it for 12 seconds and did not accept it. Each second the diagnostic word was `0x10000`, the same word that read 65536 before the trial, the slot was running, and refusals were 1. The verdict was no crash, stall, freeze or skipped track. It rolled back, and upload mode was left in 16 ms. Afterwards the unit was normal, generation 2, active `c889442d9b119d5f`, and the inventory was the same 24 modules. The diagnostic word then read 0. LEVEL was not observed. Nothing was kept.
+
+Not run: the scripted panel pass, the soak, the price and screenshots. Those steps drive the unit, and this base refused the development requests they use.
+
 ## Stock flows
 
 Not tested on a module build, except the power-off footer in Keep and power cycle. Intended checks:
@@ -89,7 +99,7 @@ Removing the module while TRACK TRIG EDIT's key layer was still up was refused, 
 
 ## Hardware
 
-Reported on the private MICRO T9 card, as above, and for this package the power-cycle footer in Keep and power cycle. The development-twin trial above is not a LEVEL pass. USB removal needs that key layer closed. The LCD captures below are emulator frames, not a hardware result.
+Reported on the private MICRO T9 card, as above, and for this package the power-cycle footer in Keep and power cycle. The development-twin trial above is not a LEVEL pass. The flashed-base trial on 20 November 2026 did not observe LEVEL. USB removal needs that key layer closed. The LCD captures below are emulator frames, not a hardware result.
 
 ## OT UI capture evidence
 
