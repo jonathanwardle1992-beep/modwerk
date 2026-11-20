@@ -1,11 +1,45 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MODULE_SCOPE_REQUIRED_FROM, baseEdits, gateEdits, moduleScopeProblems, pythonProblem, readiness } from './pr-ready.mjs'
+import { MODULE_SCOPE_REQUIRED_FROM, baseEdits, checkAndCommit, gateEdits, moduleScopeProblems, pythonProblem, readiness } from './pr-ready.mjs'
 
 describe('pr:ready verdict', () => {
+  it('commits only a fully staged tree that passed one full check', () => {
+    const root = mkdtempSync(join(tmpdir(), 'modwerk-checked-commit-')), file = join(root, 'feature')
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+      '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=' + join(root, '.git', 'unused-hooks'), ...args],
+    { cwd: root, stdio: 'pipe', encoding: 'utf8' }).trimEnd()
+    try {
+      git('init', '--initial-branch=main'); git('commit', '--allow-empty', '-m', 'base')
+      expect(() => checkAndCommit(root, git, 'topic', () => true)).toThrow(/topic branch/)
+      git('switch', '-c', 'topic')
+      const parent = git('rev-parse', 'HEAD')
+      writeFileSync(file, 'new')
+      const unexpected = () => { throw new Error('ran the full check unexpectedly') }
+      expect(() => checkAndCommit(root, git, 'topic', unexpected)).toThrow(/fully staged/)
+      git('add', 'feature')
+      expect(checkAndCommit(root, git, 'topic', () => false)).toBe(false)
+      expect(() => checkAndCommit(root, git, 'topic', () => { writeFileSync(file, 'edited'); return true })).toThrow(/fully staged/)
+      git('add', 'feature')
+      expect(() => checkAndCommit(root, git, 'topic', () => { writeFileSync(file, 'restaged'); git('add', 'feature'); return true })).toThrow(/changed during/)
+      expect(git('rev-parse', 'HEAD')).toBe(parent)
+      const tree = git('write-tree')
+      let checks = 0
+      expect(checkAndCommit(root, git, 'finish topic', () => { checks++; return true })).toBe(true)
+      expect(checks).toBe(1)
+      expect(git('show', '-s', '--format=%T %P %s', 'HEAD')).toBe(tree + ' ' + parent + ' finish topic')
+      expect(git('status', '--porcelain')).toBe('')
+      writeFileSync(file, 'next'); git('add', 'feature')
+      const gitWithHook = (...args) => {
+        if (args[0] === 'commit') { writeFileSync(file, 'changed by hook'); git('add', 'feature') }
+        return git(...args)
+      }
+      expect(() => checkAndCommit(root, gitWithHook, 'with hook', () => true)).toThrow(/resulting commit differs/)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+
   it('is ready only with a committed, current, regenerated branch whose checks pass', () => {
     expect(readiness({}).ok).toBe(true)
     for (const state of [{ dirty: ['a.ts'] }, { behind: true }, { regenerated: ['src/catalog/module-documents.json'] }, { checkPassed: false }]) expect(readiness(state).ok).toBe(false)
@@ -20,6 +54,13 @@ describe('pr:ready verdict', () => {
     const verdict = readiness({ python: old })
     expect(verdict.ok).toBe(false)
     expect(verdict.problems[0]).toBe(old)
+  })
+  it('makes npm run check name an old Python before the module gates crash in it', () => {
+    const check = readFileSync(new URL('./check.mjs', import.meta.url), 'utf8')
+    const probe = check.indexOf('localPythonProblem(root)')
+    expect(probe).toBeGreaterThan(-1)
+    expect(probe).toBeLessThan(check.indexOf("run('modules:check'"))
+    expect(probe).toBeLessThan(check.indexOf("run('modules:compat')"))
   })
   it('says how to bring a stale branch up to date from the remote that holds main', () => {
     expect(readiness({ behind: true, remote: 'upstream' }).problems[0]).toContain('git merge upstream/main')
